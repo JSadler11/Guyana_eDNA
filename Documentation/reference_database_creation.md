@@ -23,6 +23,7 @@ qiime tools export \
   --input-path mafft-fasttree-output/masked_alignment.qza \
   --output-path exported_masked_alignment
 ```
+# 1. Download Reference Datasets
 Download all reference database data from BOLD, EMBL, etc.
 
 ```
@@ -128,5 +129,103 @@ crabs
   --download-taxonomy
   --output crabtax
 ```
+# 2. Import databases into CRABS
 
+## NCBI
 
+```
+crabs
+  --import
+  --import-format ncbi
+  --input ~/crabs-downloads/NCBI_inv/ncbi_PHYLUM_MMDDYYYY.fasta
+  --names names.dmp
+  --nodes nodes.dmp
+  --acc2tax nucl_gb.accession2taxid
+  --output ~/EXAMPLEecuador_poop_novaseq/ref_db/NCBI_art_CRABS_08212025.txt
+  --ranks 'superkingdom;phylum;class;order;family;genus;species'
+```
+## MIDORI
+
+```
+crabs
+  --import
+  --import-format midori
+  --input ~/crabs-downloads/MIDORI/coi_total_267.fasta
+  --names names.dmp
+  --nodes nodes.dmp
+  --acc2tax nucl_gb.accession2taxid
+  --output ~/crabs-downloads/MIDORI_art_CRABS_267.txt
+  --ranks 'superkingdom;phylum;class;order;family;genus;species'
+```
+
+## BOLD
+
+```
+crabs --import --import-format bold --input ~/crabs-downloads/BOLD/bold_all_art_08222025.fasta --names names.dmp --nodes nodes.dmp --acc2tax nucl_gb.accession2taxid --output ~/crabs-downloads/BOLD_art_CRABS_08212025.txt --ranks 'superkingdom;phylum;class;order;family;genus;species'
+```
+
+## EMBL
+
+```
+crabs --import --import-format embl --input ~/crabs-downloads/EMBL/embl_all_inv_08222025.fasta --names names.dmp --nodes nodes.dmp --acc2tax nucl_gb.accession2taxid --output ~/crabs-downloads/EMBL_art_CRABS_08212025.txt --ranks 'superkingdom;phylum;class;order;family;genus;species'
+```
+## Merge Sequences
+
+```
+crabs --merge --input 'NCBI_art_CRABS_08212025.txt;NCBI_birds_CRABS_08252025.txt;MIDORI_artbirds_CRABS_267.txt;BOLD_art_CRABS_08212025.txt;BOLD_birds_CRABS_08252025.txt;EMBL_art_CRABS_08212025.txt' --uniq --output ArtBirds_ALL.txt
+```
+
+## Extract regions through _in silico_ PCR
+
+```
+ulimit -n 65536
+
+crabs --in-silico-pcr --input ArtBirds_ALL.txt --output ArtBirds_ALL_V5.txt --forward GGTCAACAAATCATAAAGATATTGG --reverse GGWACTAATCAATTTCCAAATCC --mismatch 4.5
+```
+
+## Retrieve amplicons without primer-binding regions
+This can take some time. 
+```
+crabs --pairwise-global-alignment --input ArtBirds_ALL_c.txt --amplicons ArtBirds_ALL_V5.txt --output extra_V5_ArtBirds_ALL.txt --forward GGTCAACAAATCATAAAGATATTGG --reverse GGWACTAATCAATTTCCAAATCC  --percent-identity 0.60 --coverage 95
+```
+
+## Dereplicate the database
+```
+crabs --dereplicate --input extra_V5_ArtBirds_ALL.txt --output extra_V5_ArtBirds_ALL_derep.txt --dereplication-method 'unique_species'
+```
+
+## Filter (N>10)
+```
+crabs --filter --input extra_V5_ArtBirds_ALL_derep.txt --output extra_V5_ArtBirds_ALL_derep_filtered.txt --maximum-n 10
+```
+## Export into QIIME format
+```
+crabs
+  --export
+  --input extra_V5_ArtBirds_ALL_derep.txt
+  --output QIIME2_Ecuador_tax.txt
+  --export-format 'qiime-text'
+
+crabs
+  --export
+  --input extra_V5_ArtBirds_ALL_derep.txt
+  --output  QIIME2_Ecuador_seq.txt
+  --export-format 'qiime-fasta'
+```
+
+## Import into QIIME
+```
+conda activate qiime2-amplicon-2024.10
+## taxonomy file import
+ qiime tools import \
+   --type 'FeatureData[Taxonomy]' \
+   --input-format HeaderlessTSVTaxonomyFormat \
+   --input-path QIIME2_Ecuador_tax.txt \
+   --output-path QIIME2_Ecuador_tax.qza
+
+## fasta file import
+qiime tools import \
+  --type 'FeatureData[Sequence]' \
+  --input-path QIIME2_Ecuador_seq.txt \
+  --output-path QIIME2_Ecuador_seq.qza
+```
