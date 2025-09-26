@@ -280,7 +280,90 @@ Trimming BOLD sequences involves a few steps before dereplication.
 - Very short (<250 bp) sequences
 - Very long (>1600 bp) sequences
 
+**NOTE: The following until RESCRIPT is only an alternative to the above. I will likely delete it. **
 
+Pull sequence data from the above procedures, or with the following [R script](https://osf.io/m5cgs), which you will need to adapt to the specific taxa you'd like to study. If using the R script, combine all seqNtaxa.csv files and reformat into a fasta-formatted file (again, this is pulled from [Devon O'Rourke's classifier tutorial](https://forum.qiime2.org/t/building-a-coi-database-from-bold-references/16129)).
+
+Check to see if there are any cases of replicate sequenceIDs. This typically occur when there are multiple metadata entries with very similar but not identical records.
+
+```
+grep '^>' bold_allrawSeqs.fasta | cut -f l -d ';' | sed 's/^>//' | sort | uniq -c | awk '{if ($1>1) print $0}' > duplicated_bold_records.txt
+```
+All cases of multiple identical BOLD IDs are duplicates, or that every instance of a BOLD ID occuring more than once is always going to be an instance when they occur exactly two times. But, do these duplicates actually include the same sequence information?
+```
+for comp in $(awk '{print $2}' duplicated_bold_records.txt); do
+  str=$(grep -w $comp bold_allrawSeqs.fasta -A 1 | grep -v '^>' | grep -v '^--' | head -1);
+  str2=$(grep -w $comp bold_allrawSeqs.fasta -A 1 | grep -v '^>' | grep -v '^--' | tail -1);
+  if [ "$str1" == "$str2" ]; then
+      echo $comp "Strings are equal"
+  else
+      echo $comp "Strings are not equal"
+  if
+done
+
+```
+If the duplicated records are indeed identical (they typically are), just delete the list of duplicate records.
+
+```
+cat *.seqNtaxa.csv | \
+grep -v 'sequenceID,taxon,nucleotides' | \
+sort | uniq | \
+awk -F ',' '{OFS="\t"};{print $1";tax="$2, $3}' | \
+sed 's/^/>/g' | \
+tr '\t' '\n' > bold_allrawSeqs.fasta
+```
+Next, check to see if there are any non-IUPAC sequences. Valid characters are the set [ T H A D G R C . S M B N - W V K Y ]
+
+```
+## getting the line numbers of the bad sequences
+grep -v '^>' bold_allrawSeqs.fasta | grep [^THADGRC\.SMBNWVKY-] -n > badseqs.txt
+
+## reformatting these line numbers to delete
+for val in $(cut -f 1 badseqs.txt -d ':'); do
+myvar1=$(($val*2))
+myvar2=$(($myvar1-1))
+echo $myvar2"d"
+echo $myvar1"d"
+done | tr '\n' ';' | sed 's/.$//' > droplines.txt
+
+## deleting these line numbers
+myval=$(cat droplines.txt)
+sed -e $myval bold_allrawSeqs.fasta > cleaned_bold_allrawSeqs.fasta
+```
+Convert to fasta
+
+```
+## First make the fasta file
+sed 's/;tax=k.*//' cleaned_bold_allrawSeqs.fasta > bold_rawSeqs_forQiime.fasta
+
+## Next make the taxonomy file
+grep '^>' cleaned_bold_allrawSeqs.fasta | sed 's/^>//' | \
+awk '{for(i=1;i<2;i++)sub(";","\t")}1' > bold_rawTaxa_forQiime.tsv
+```
+Now import as QIIME objects for building the CO1 database:
+- ```bold_rawSeqs_forQIIME.fasta``` is used to create a sequence .qza artifact (type==FeatureData[AlignedSequence]). This is different from --type 'FeatureData[Sequence]', as BOLD data can often contain large gaps.
+- ```bold_rawTaxa_forQIIME.tsv``` is used to create the taxonomy .qza artifact associated with the fasta sequences (type==FeatureData[Taxonomy]).
+
+```
+## import sequence data
+qiime tools import \
+  --input-path bold_rawSeqs_forQiime.fasta \
+  --output-path bold_rawSeqs.qza \
+  --type 'FeatureData[AlignedSequence]'
+## import taxonomy data
+qiime tools import \
+  --type 'FeatureData[Taxonomy]' \
+  --input-format HeaderlessTSVTaxonomyFormat \
+  --input-path bold_rawTaxa_forQiime.tsv \
+  --output-path bold_rawTaxa.qza
+```
+Making a metadata file: 
+
+```
+cat *.meta.csv | \
+grep -v 'sequenceID,processid,bin_uri,genbank_accession,country,institution_storing' | \
+awk '{for(i=1;i<6;i++)sub(",","\t")}1' | sort -uk1,1 >  bold_rawMetadata_forQiime.tsv
+```
 
 
 
