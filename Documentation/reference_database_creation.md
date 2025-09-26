@@ -1,6 +1,14 @@
-# Reference Database Curation
+# Reference Database Curation & Classifier Building
 
 These details were adapted from the Ecuador Bird Poop database created and shared by Dr. Sophie Picq and [Mike Allen](https://www.mikeallen-eco.com/news/2024/7/25/making-a-metabarcoding-reference-database-for-arthropods-part-1-downloading-sequences-1). Do not distribute outside of the lab without consulting Dr. Picq directly. Dr. Allen's blog is publicly available and I strongly recommend reading in full if this is new.
+
+The general order of operations is as follows, pulled from [Devon O'Rourke's](https://forum.qiime2.org/t/building-a-coi-database-from-bold-references/16129) tutorial.
+
+1. Collect database sequences and associated taxonomy information.
+2. Reformat these data and import into QIIME
+3. Filter these data in QIIME using options available via the RESCRIPt plugin
+4. Evaluate the database using options in RESCRIPt
+5. Create a naive Bayes classifier using RESCRIPt which can be used in downstream classification of your particular experiment.
 
 Create a reference database that has sequences from BOLD, NCBI, and MIDORI on metazoa and plants of the area (qza).
 
@@ -40,6 +48,19 @@ do
 done
 
 cat *.fasta > bold_all_TAXA_MMDDYYYY.fasta
+
+OR
+# From Mike Allen
+
+artnames=("XXXXXX" "XXXXXXXX" "XXXXXXXX")
+
+for i in "${TAXAnames[@]}";
+  do crabs db_download
+  --source bold
+  --database "$i"
+  --output "bold_${i}.fasta"
+  --keep_original no
+done
 
 #Download birds from BOLD (as an example)
 
@@ -108,7 +129,10 @@ suf=("1" "2" "3" "4" "5" "6" "7" "8" "9" "10" "11" "12" "13" "14" "15" "16" "17"
 
 # loop through the suffixes to download EMBL in manageable batches
 for j in "${suf[@]}"; 
-  do crabs --download-embl --taxon "INV_${j}*" --output "embl_inv_${j}.fasta"
+  do crabs
+    --download-embl
+    --taxon "TAX_${j}*"
+    --output "embl_TAX_${j}.fasta"
 done
 
 cat *.fasta > embl_all_inv_08222025.fasta
@@ -116,6 +140,22 @@ cat *.fasta > embl_all_inv_08222025.fasta
 To download CO1 MIDORI
 
 ```
+# to download the MIDORI CO1 fasta file
+wget https://www.reference-midori.info/download/Databases/GenBank267_2025_06-19/RAW/uniq/MIDORI_UNIQ_NUC_GB267_CO1_RAW.fasta.gz
+
+# unzip it
+gunzip *.fasta.gz
+
+# convert periods into spaces so that CRABS can read the accession numbers
+sed 's/\./ /g' MIDORI2_UNIQ_NUC_GB267_CO1_RAW.fasta > midori2.fix.fasta"
+
+# import sequences into crabs
+crabs db_import
+  --input midori2.fix.fasta \
+  --output midori2.fix.crb.fasta \
+  --seq-header accession \
+  --delim ' '
+
 crabs
   --download-midori
   --output coi_total_267.fasta
@@ -131,7 +171,7 @@ crabs
 ```
 # 2. Import databases into CRABS
 
-## NCBI
+### NCBI
 
 ```
 crabs
@@ -144,7 +184,7 @@ crabs
   --output ~/EXAMPLEecuador_poop_novaseq/ref_db/NCBI_art_CRABS_08212025.txt
   --ranks 'superkingdom;phylum;class;order;family;genus;species'
 ```
-## MIDORI
+### MIDORI
 
 ```
 crabs
@@ -158,13 +198,13 @@ crabs
   --ranks 'superkingdom;phylum;class;order;family;genus;species'
 ```
 
-## BOLD
+### BOLD
 
 ```
 crabs --import --import-format bold --input ~/crabs-downloads/BOLD/bold_all_art_08222025.fasta --names names.dmp --nodes nodes.dmp --acc2tax nucl_gb.accession2taxid --output ~/crabs-downloads/BOLD_art_CRABS_08212025.txt --ranks 'superkingdom;phylum;class;order;family;genus;species'
 ```
 
-## EMBL
+### EMBL
 
 ```
 crabs --import --import-format embl --input ~/crabs-downloads/EMBL/embl_all_inv_08222025.fasta --names names.dmp --nodes nodes.dmp --acc2tax nucl_gb.accession2taxid --output ~/crabs-downloads/EMBL_art_CRABS_08212025.txt --ranks 'superkingdom;phylum;class;order;family;genus;species'
@@ -175,7 +215,7 @@ crabs --import --import-format embl --input ~/crabs-downloads/EMBL/embl_all_inv_
 crabs --merge --input 'NCBI_art_CRABS_08212025.txt;NCBI_birds_CRABS_08252025.txt;MIDORI_artbirds_CRABS_267.txt;BOLD_art_CRABS_08212025.txt;BOLD_birds_CRABS_08252025.txt;EMBL_art_CRABS_08212025.txt' --uniq --output ArtBirds_ALL.txt
 ```
 
-## Extract regions through _in silico_ PCR
+### Extract regions through _in silico_ PCR
 
 ```
 ulimit -n 65536
@@ -183,22 +223,22 @@ ulimit -n 65536
 crabs --in-silico-pcr --input ArtBirds_ALL.txt --output ArtBirds_ALL_V5.txt --forward GGTCAACAAATCATAAAGATATTGG --reverse GGWACTAATCAATTTCCAAATCC --mismatch 4.5
 ```
 
-## Retrieve amplicons without primer-binding regions
+### Retrieve amplicons without primer-binding regions
 This can take some time. 
 ```
 crabs --pairwise-global-alignment --input ArtBirds_ALL_c.txt --amplicons ArtBirds_ALL_V5.txt --output extra_V5_ArtBirds_ALL.txt --forward GGTCAACAAATCATAAAGATATTGG --reverse GGWACTAATCAATTTCCAAATCC  --percent-identity 0.60 --coverage 95
 ```
 
-## Dereplicate the database
+### Dereplicate the database
 ```
 crabs --dereplicate --input extra_V5_ArtBirds_ALL.txt --output extra_V5_ArtBirds_ALL_derep.txt --dereplication-method 'unique_species'
 ```
 
-## Filter (N>10)
+### Filter (N>10)
 ```
 crabs --filter --input extra_V5_ArtBirds_ALL_derep.txt --output extra_V5_ArtBirds_ALL_derep_filtered.txt --maximum-n 10
 ```
-## Export into QIIME format
+### Export into QIIME format
 ```
 crabs
   --export
@@ -213,7 +253,7 @@ crabs
   --export-format 'qiime-fasta'
 ```
 
-## Import into QIIME
+### Import into QIIME
 ```
 conda activate qiime2-amplicon-2024.10
 ## taxonomy file import
@@ -229,3 +269,18 @@ qiime tools import \
   --input-path QIIME2_Ecuador_seq.txt \
   --output-path QIIME2_Ecuador_seq.qza
 ```
+
+# Building a classifier using RESCRIPT
+
+This example, from [Devon O'Rourke](https://forum.qiime2.org/t/building-a-coi-database-from-bold-references/16129) uses the CO1 gene marker.
+
+Trimming BOLD sequences involves a few steps before dereplication.
+- Ambiguous nucleotide content (5 or more N's)
+- Long homopolymer runs (12 or more)
+- Very short (<250 bp) sequences
+- Very long (>1600 bp) sequences
+
+
+
+
+
