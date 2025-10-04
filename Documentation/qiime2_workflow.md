@@ -77,16 +77,25 @@ conda activate qiime2-amplicon-2024.10
 Next, you want to use a QIIME import function to make a .qza artifact containing all the unjoined paired end data. $QIIMEDIR refers to the path to the output path for the resulting QIIME artifact outputs.
 
 ```
-qiime tools import \
-  --type 'SampleData[PairedEndSequencesWithQuality]' \
-  --input-path \Volumes\ROSALIND \
-  --output-path "$QIIMEDIR"/"$LIB".demux.qza \
-  --input-format PairedEndFastqManifestPhred33
+## create manifest file
+pwd > "$LIB"_pwd.tmptxt
+find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
+cut -f 1 -d "_" "$LIB"_filenames.tmptxt > "$LIB"_col1.tmptxt
+wc -l "$LIB"_col1.tmptxt | cut -f 1 -d ' ' > "$LIB"_lines.tmptxt
+seq $(echo $(cat "$LIB"_lines.tmptxt)) | xargs -Iz echo $(cat "$LIB"_pwd.tmptxt) > "$LIB"_dirpath.tmptxt
+paste "$LIB"_dirpath.tmptxt "$LIB"_filenames.tmptxt -d "/" > "$LIB"_col2.tmptxt
+for i in $(cat "$LIB"_filenames.tmptxt); do
+if [[ $i == *_1.fastq.gz ]];
+then
+  echo "forward"
+else
+  echo "reverse"
+fi;
+done > "$LIB"_col3.tmptxt
+paste "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt -d "," > "$LIB"_manifest.tmptxt
+echo 'sample-id,absolute-filepath,direction' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
+rm *.tmptxt
 
-qiime demux summarize \
-  --i-data "$QIIMEDIR"/"$LIB".demux.qza \
-  --p-n 50000 \
-  --o-visualization "$QIIMEDIR"/"$LIB".demux_sumry.qzv
 ```
 
 Import sequence data [O'Rourke](https://github.com/devonorourke/nhguano/blob/master/docs/sequence_processing.md)
@@ -100,7 +109,8 @@ qiime tools import \\
 
 qiime demux summarize \\
 --i-data demux-paired \\
---o-visualization demux-paired.qzv
+--p-n 50000 \\
+--o-visualization demux-sumry.qzv
 # But how does QIIME demultiplex everything without the primers???
 ```
 DADA2 Denoise Paired-End
@@ -108,17 +118,32 @@ DADA2 Denoise Paired-End
 ```
 ## generate repseqs
 qiime dada2 denoise-paired \
-  --p-n-threads 24 --p-trunc-len-f 181 --p-trunc-len-r 181 \
-  --i-demultiplexed-seqs "$LIB".demux.qza --o-denoising-stats "$LIB".denoisingStats.qza \
-  --o-table "$LIB".raw_table.qza --o-representative-sequences "$LIB".raw_repSeqs.qza \
+  --p-n-threads 8
+  --p-trunc-len-f 181
+  --p-trunc-len-r 181 \
+  --i-demultiplexed-seqs "$LIB".demux.qza
+  --o-denoising-stats "$LIB".denoisingStats.qza \
+  --o-table "$LIB".raw_table.qza
+  --o-representative-sequences "$LIB".raw_repSeqs.qza \
 
 ## generate summary visualization
 qiime metadata tabulate \
---m-input-file "$LIB".denoisingStats.qza --o-visualization "$LIB".denoisingStats.qzv  
+  --m-input-file "$LIB".denoisingStats.qza
+  --o-visualization "$LIB".denoisingStats.qzv  
+
+```
 
 
 
 
+
+
+
+
+
+### extra stuff
+
+```
 
 qiime demux filter-samples \                                   
 --i-demux demux-subsample.qza \     
