@@ -55,15 +55,22 @@ echo "Reverse: ${REVERSE_PRIMERS[@]}"
 ```
 Full script is below. We are using a zsh index, so don't use "[$i-1]" when indexing, use "[$i]". Additionally, zsh indexes will allow us to only use i when assigning array indices. However, to run the same code on bash we will need to use idx.
 ```
+FORWARD_PRIMERS=("mlCO1intF=GGWACWGGWTGAACWGTWTAYCCYCC"
+                "18SV7&8F=GYGGTGCATGGCCGTTSKTRGTT"
+                "MiFishUF=GTCGGTAAAACTCGTGCCAGC"
+                "ITS-S2F=ATGCGATACTTGGTGTGAAT"
+                "16SV3&4F=GTGYCAGCMGCCGCGGTAA"
+                "12SV5F=ACTGGGATTAGATACCCC")
 
-RAWDIR=/Volumes/ROSALIND/eDNA_Pilots/SCreek/raw/12SV5
-OUTDIR=/Volumes/ROSALIND/eDNA_Pilots/SCreek/SC_trimmed
+REVERSE_PRIMERS=("jgHCO2198=TAIACYTCIGGRTGICCRAARAAYCA"
+                "18SV7&8R=GTGTGYACAAAGGBCAGGGAC"
+                "MiFishUR=CATAGTGGGGTATCTAATCCCAGTTTG"
+                "ITS-S3R=GACGCTTCTCCAGACTACAAT"
+                "16SV3&4R=GGACTACNVGGGTWTCTAAT"
+                "12SV5R=TAGAACAGGCTCCTCTAG")
 
-FORWARD_PRIMERS=("12SV5F=ACTGGGATTAGATACCCC")
+MARKER_NAMES=("CO1" "18S" "MiFishU" "ITS2" "16S" "12SV5")
 
-REVERSE_PRIMERS=("12SV5R=TAGAACAGGCTCCTCTAG")
-
-MARKER_NAMES=("12SV5")
 
 ## Make individual folders for Primers
 
@@ -72,12 +79,12 @@ for MARKER in "${MARKER_NAMES[@]}"; do
 done
 
 ## Now separate R1 from R2 and run.
+## Replace N with number of primers you are running
 
 for SAMPLE in $(ls $RAWDIR | grep "_R1.fastq.gz" | sed 's/_R1.fastq.gz//' | sort -u); do
   echo "Processing sample: $SAMPLE"
 
-## Replace N with number of primers you are running
-for i in {1..N}; do
+for i in {1..4}; do
   MARKER=${MARKER_NAMES[$i]}
   FWD=$(echo "${FORWARD_PRIMERS[$i]}" | cut -d'=' -f2)
   REV=$(echo "${REVERSE_PRIMERS[$i]}" | cut -d'=' -f2)
@@ -134,17 +141,34 @@ rm *.tmptxt
 Import sequence data [O'Rourke](https://github.com/devonorourke/nhguano/blob/master/docs/sequence_processing.md)
 
 ```
-qiime tools import \\
---type 'SampleData[PairedEndSequencesWithQuality]' \\
---input-path /Volumes/ROSALIND/eDNA_Pilots/WWorth/ww_manifest.tsv \\
---output-path demux.qza \\
+qiime tools import \
+--type 'SampleData[PairedEndSequencesWithQuality]' \
+--input-path /Volumes/ROSALIND/eDNA_Pilots/WWorth/ww_manifest.tsv \
+--output-path demux.qza \
 --input-format PairedEndFastqManifestPhred33V2
 
-qiime demux summarize \\
---i-data demux-paired \\
+qiime demux summarize \
+--i-data demux.qza \
 --p-n 50000 \\
 --o-visualization demux-sumry.qzv
-# But how does QIIME demultiplex everything without the primers???
+
+qiime demux paired end reads with barcodes and metadata file
+
+qiime cutadapt trim-paired \
+  --i-demultiplexed-sequences demux.qza \
+  --p-front-f GGWACWGGWTGAACWGTWTAYCCYCC \ # CO1
+  --p-front-f GTCGGTAAAACTCGTGCCAGC \ # MiFishU
+  --p-front-f GTGYCAGCMGCCGCGGTAA \ # 16S
+  --p-front-f ATGCGATACTTGGTGTGAAT \ # ITS2
+  --p-front-f GYGGTGCATGGCCGTTSKTRGTT \ #18S
+  --p-front-r TAIACYTCIGGRTGICCRAARAAYCA \ # CO1
+  --p-front-r CATAGTGGGGTATCTAATCCCAGTTTG \ # MiFishU
+  --p-front-r GGACTACNVGGGTWTCTAAT \ # 16S
+  --p-front-r GACGCTTCTCCAGACTACAAT \ # ITS2
+  --p-front-r GTGTGYACAAAGGBCAGGGAC \ # 18S
+  --p-discard-untrimmed \
+  --p-cores 8 \
+  --o-trimmed-sequences demux-trimmed.qza
 ```
 DADA2 Denoise Paired-End
 
