@@ -151,8 +151,17 @@ qiime demux summarize \
 --i-data demux.qza \
 --p-n 50000 \\
 --o-visualization demux-sumry.qzv
-
-qiime demux paired end reads with barcodes and metadata file
+```
+qiime demux paired end reads with barcodes and metadata file. Two steps are listed below, first for primer filtering, then for trimming.
+```
+qiime cutadapt demux-paired \
+  --i-seqs demux.qza \
+  --m-forward-barcodes-file primer-metadata.tsv \
+  --m-forward-barcodes-column forward-primer-sequence \
+  --m-reverse-barcodes-file primer-metadata.tsv \
+  --m-reverse-barcodes-column reverse-primer-sequence \
+  --o-per-sample-sequences demuxed-by-primer.qza \
+  --o-untrimmed-sequences untrimmed.qza
 
 qiime cutadapt trim-paired \
   --i-demultiplexed-sequences demux.qza \
