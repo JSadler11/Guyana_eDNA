@@ -4,6 +4,8 @@ These procedures are an adapted combination of the work done by Devon O'Rourke, 
 
 First we want to demultiplex our reads. These examples are using paired-end sequence data. Each read will be sorted according to primers. 
 
+For command line history: cat ~/.zsh_history
+
 $RAWDIR points to the libraries of stored sequence data.
 
 ```
@@ -66,62 +68,10 @@ Note that while we have trimmed the primers and sorted the reads according to th
 
 To import into QIIME2, we need to look into making a manifest file [O'Rourke](https://github.com/devonorourke/nhguano/blob/master/docs/sequence_processing.md).
 
-```
-
-LIB=$(basename "$PWD")
-
-pwd > "$LIB"_pwd.tmptxt
-find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
-cut -f 1 -d "_" "$LIB"_filenames.tmptxt > "$LIB"_col1.tmptxt
-wc -l "$LIB"_col1.tmptxt | cut -f 1 -d ' ' > "$LIB"_lines.tmptxt
-seq $(echo $(cat "$LIB"_lines.tmptxt)) | xargs -Iz echo $(cat "$LIB"_pwd.tmptxt > "$LIB"_dirpath.tmptxt
-paste "$LIB"_dirpath.tmptxt "$LIB"_filenames.tmptxt -d "/" > "$LIB"_col2.tmptxt
-for i in $(cat "$LIB"_filenames.tmptxt); do
-  if [[ $i == *_1.fastq.gz ]];
-    then
-      echo "forward"
-    else
-      echo "reverse"
-    fi;
-    done > "$LIB"_col3.tmptxt
-paste "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt -d "," > "$LIB"_manifest.tmptxt
-echo 'sample-id,absolute-filepath,direction' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
-rm *.tmptxt
-
-```
-
 To activate QIIME: 
 
 ```
 conda activate qiime2-amplicon-2024.10
-
-```
-$OUTDIR refers to the path set from previous command (where Cutadapt output fq files were output)
-$LIB refers to the individual library name a sample was sequenced within (e.g. "Lib12")
-$LIBALT refers to the individual library directory a sample was sequenced within (e.g. /path/to/Lib12)
-
-OUTDIR=/mnt/lustre/macmaneslab/devon/guano/paper3/fastq/"$LIBALT"
-cd $OUTDIR
-```
-## create manifest file
-pwd > "$LIB"_pwd.tmptxt
-find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
-cut -f 1 -d "_" "$LIB"_filenames.tmptxt > "$LIB"_col1.tmptxt
-wc -l "$LIB"_col1.tmptxt | cut -f 1 -d ' ' > "$LIB"_lines.tmptxt
-seq $(echo $(cat "$LIB"_lines.tmptxt)) | xargs -Iz echo $(cat "$LIB"_pwd.tmptxt) > "$LIB"_dirpath.tmptxt
-paste "$LIB"_dirpath.tmptxt "$LIB"_filenames.tmptxt -d "/" > "$LIB"_col2.tmptxt
-for i in $(cat "$LIB"_filenames.tmptxt); do
-if [[ $i == *_1.fastq.gz ]];
-then
-  echo "forward"
-else
-  echo "reverse"
-fi;
-done > "$LIB"_col3.tmptxt
-paste "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt -d "," > "$LIB"_manifest.tmptxt
-echo 'sample-id,absolute-filepath,direction' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
-rm *.tmptxt
-
 ```
 
 Next, you want to use a QIIME import function to make a .qza artifact containing all the unjoined paired end data. $QIIMEDIR refers to the path to the output path for the resulting QIIME artifact outputs.
@@ -129,7 +79,7 @@ Next, you want to use a QIIME import function to make a .qza artifact containing
 ```
 qiime tools import \
   --type 'SampleData[PairedEndSequencesWithQuality]' \
-  --input-path ../"$LIB".manifest.file \
+  --input-path \Volumes\ROSALIND \
   --output-path "$QIIMEDIR"/"$LIB".demux.qza \
   --input-format PairedEndFastqManifestPhred33
 
@@ -142,20 +92,16 @@ qiime demux summarize \
 Import sequence data [O'Rourke](https://github.com/devonorourke/nhguano/blob/master/docs/sequence_processing.md)
 
 ```
-qiime tools import \
-  --type 'SampleData[PairedEndSequencesWithQuality]' \
-  --input-path ../"$LIB".manifest.file \
-  --output-path "$QIIMEDIR"/"$LIB".demux.qza \
-  --input-format PairedEndFastqManifestPhred33
-
-qiime tools import \
---type 'SampleData[PairedEndSequencesWithQuality]' \
---input-path /Users/jacksadler/Wadsworth_Pilot/021725_PilotRerun/raw/all_reads \ 
---output-path demux.qza \                     
+qiime tools import \\
+--type 'SampleData[PairedEndSequencesWithQuality]' \\
+--input-path /Volumes/ROSALIND/eDNA_Pilots/WWorth/ww_manifest.tsv \\
+--output-path demux.qza \\
 --input-format PairedEndFastqManifestPhred33V2
 
-
-
+qiime demux summarize \\
+--i-data demux-paired \\
+--o-visualization demux-paired.qzv
+# But how does QIIME demultiplex everything without the primers???
 ```
 DADA2 Denoise Paired-End
 
