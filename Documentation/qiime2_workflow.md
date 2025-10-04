@@ -12,6 +12,7 @@ Next, cd'd in the directory with all of your .fastq.gz seq data run:
 ```
 fastqc -t 4 -o /Volumes/ROSALIND/eDNA_Pilots/WWorth/QualityControlReports *.fastq.gz
 ```
+## Back to CutAdapt
 
 First we want to demultiplex our reads. These examples are using paired-end sequence data. Each read will be sorted according to primers. 
 
@@ -20,19 +21,19 @@ For command line history: cat ~/.zsh_history
 $RAWDIR points to the libraries of stored sequence data.
 
 ```
-RAWDIR_WW=/Volumes/ROSALIND/WWorth/raw/all_reads/    
+RAWDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/raw/all_reads/    
 ```
 
 $OUTDIR points to an output directory where trimmed reads are stored.
 ```
-OUTDIR_WW=/Volumes/ROSALIND/WWorth/WW_trimmed
+OUTDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/WW_trimmed
 ```
 Demultiplexing all of the sequence data from primers using CutAdapt.
 
 ```
 
-RAWDIR_WW=/Volumes/ROSALIND/WWorth/raw/all_reads
-OUTDIR_WW=/Volumes/ROSALIND/WWorth/WW_trimmed
+RAWDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/raw/all_reads
+OUTDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/WW_trimmed
 
 FORWARD_PRIMERS=("mlCO1intF=GGWACWGGWTGAACWGTWTAYCCYCC"
                 "18SV7&8F=GYGGTGCATGGCCGTTSKTRGTT"
@@ -48,9 +49,13 @@ REVERSE_PRIMERS=("jgHCO2198=TAIACYTCIGGRTGICCRAARAAYCA"
 
 MARKER_NAMES=("CO1" "18S" "MiFishU" "ITS2" "16S")
 
+## Make individual folders for Primers
+
 for MARKER in "${MARKER_NAMES[@]}"; do
     mkdir -p "$OUTDIR_WW/$MARKER"
 done
+
+## Now separate R1 from R2 and run.
 
 for SAMPLE in $(ls $RAWDIR_WW | grep "_R1.fastq.gz" | sed 's/_R1.fastq.gz//' | sort -u); do
   echo "Processing sample: $SAMPLE"
@@ -58,8 +63,8 @@ for SAMPLE in $(ls $RAWDIR_WW | grep "_R1.fastq.gz" | sed 's/_R1.fastq.gz//' | s
 for i in {1..5}; do
   idx=$((i-1))
   MARKER=${MARKER_NAMES[$idx]}
-  FWD=${FORWARD_PRIMERS[$idx]}
-  REV=${REVERSE_PRIMERS[$idx]}
+  FWD=$(echo "${FORWARD_PRIMERS[$idx]}" | cut -d'=' -f2)
+  REV=$(echo "${REVERSE_PRIMERS[$idx]}" | cut -d'=' -f2)
 
   echo "$MARKER : $FWD / $REV"
 
@@ -71,7 +76,8 @@ for i in {1..5}; do
     -o "$OUTDIR_WW/$MARKER/${SAMPLE}_${MARKER}.1.fastq.gz" \
     -p "$OUTDIR_WW/$MARKER/${SAMPLE}_${MARKER}.2.fastq.gz" \
     "$RAWDIR_WW/${SAMPLE}_R1.fastq.gz" \
-    "$RAWDIR_WW/${SAMPLE}_R2.fastq.gz"
+    "$RAWDIR_WW/${SAMPLE}_R2.fastq.gz" \
+    > "$OUTDIR_WW/$MARKER/${SAMPLE}_${MARKER}_cutadapt_report.txt" 2>&1
   done
 done
 ```
