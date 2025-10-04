@@ -29,42 +29,58 @@ $OUTDIR points to an output directory where trimmed reads are stored.
 OUTDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/WW_trimmed
 ```
 Demultiplexing all of the sequence data from primers using CutAdapt.
-
+Full primer library is listed here, copy and paste only what you need for runs.
 ```
-
-RAWDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/raw/all_reads
-OUTDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/WW_trimmed
-
 FORWARD_PRIMERS=("mlCO1intF=GGWACWGGWTGAACWGTWTAYCCYCC"
                 "18SV7&8F=GYGGTGCATGGCCGTTSKTRGTT"
                 "MiFishUF=GTCGGTAAAACTCGTGCCAGC"
                 "ITS-S2F=ATGCGATACTTGGTGTGAAT"
-                "16SV3&4F=GTGYCAGCMGCCGCGGTAA")
+                "16SV3&4F=GTGYCAGCMGCCGCGGTAA"
+                "12SV5F=ACTGGGATTAGATACCCC")
 
 REVERSE_PRIMERS=("jgHCO2198=TAIACYTCIGGRTGICCRAARAAYCA"
                 "18SV7&8R=GTGTGYACAAAGGBCAGGGAC"
                 "MiFishUR=CATAGTGGGGTATCTAATCCCAGTTTG"
                 "ITS-S3R=GACGCTTCTCCAGACTACAAT"
-                "16SV3&4R=GGACTACNVGGGTWTCTAAT")
+                "16SV3&4R=GGACTACNVGGGTWTCTAAT"
+                "12SV5R=TAGAACAGGCTCCTCTAG")
 
-MARKER_NAMES=("CO1" "18S" "MiFishU" "ITS2" "16S")
+MARKER_NAMES=("CO1" "18S" "MiFishU" "ITS2" "16S" "12SV5")
+```
+To check to see what markers are logged in your terminal, run this echo command:
+```
+echo "Markers: ${MARKER_NAMES[@]}"
+echo "Forward: ${FORWARD_PRIMERS[@]}"
+echo "Reverse: ${REVERSE_PRIMERS[@]}"
+```
+Full script is below. We are using a zsh index, so don't use "[$i-1]" when indexing, use "[$i]". Additionally, zsh indexes will allow us to only use i when assigning array indices. However, to run the same code on bash we will need to use idx.
+```
+
+RAWDIR=/Volumes/ROSALIND/eDNA_Pilots/SCreek/raw/12SV5
+OUTDIR=/Volumes/ROSALIND/eDNA_Pilots/SCreek/SC_trimmed
+
+FORWARD_PRIMERS=("12SV5F=ACTGGGATTAGATACCCC")
+
+REVERSE_PRIMERS=("12SV5R=TAGAACAGGCTCCTCTAG")
+
+MARKER_NAMES=("12SV5")
 
 ## Make individual folders for Primers
 
 for MARKER in "${MARKER_NAMES[@]}"; do
-    mkdir -p "$OUTDIR_WW/$MARKER"
+    mkdir -p "$OUTDIR/$MARKER"
 done
 
 ## Now separate R1 from R2 and run.
 
-for SAMPLE in $(ls $RAWDIR_WW | grep "_R1.fastq.gz" | sed 's/_R1.fastq.gz//' | sort -u); do
+for SAMPLE in $(ls $RAWDIR | grep "_R1.fastq.gz" | sed 's/_R1.fastq.gz//' | sort -u); do
   echo "Processing sample: $SAMPLE"
 
-for i in {1..5}; do
-  idx=$((i-1))
-  MARKER=${MARKER_NAMES[$idx]}
-  FWD=$(echo "${FORWARD_PRIMERS[$idx]}" | cut -d'=' -f2)
-  REV=$(echo "${REVERSE_PRIMERS[$idx]}" | cut -d'=' -f2)
+## Replace N with number of primers you are running
+for i in {1..N}; do
+  MARKER=${MARKER_NAMES[$i]}
+  FWD=$(echo "${FORWARD_PRIMERS[$i]}" | cut -d'=' -f2)
+  REV=$(echo "${REVERSE_PRIMERS[$i]}" | cut -d'=' -f2)
 
   echo "$MARKER : $FWD / $REV"
 
@@ -73,11 +89,11 @@ for i in {1..5}; do
     -G "$REV" \
     --cores=8 \
     --discard-untrimmed \
-    -o "$OUTDIR_WW/$MARKER/${SAMPLE}_${MARKER}.1.fastq.gz" \
-    -p "$OUTDIR_WW/$MARKER/${SAMPLE}_${MARKER}.2.fastq.gz" \
-    "$RAWDIR_WW/${SAMPLE}_R1.fastq.gz" \
-    "$RAWDIR_WW/${SAMPLE}_R2.fastq.gz" \
-    > "$OUTDIR_WW/$MARKER/${SAMPLE}_${MARKER}_cutadapt_report.txt" 2>&1
+    -o "$OUTDIR/$MARKER/${SAMPLE}_${MARKER}.1.fastq.gz" \
+    -p "$OUTDIR/$MARKER/${SAMPLE}_${MARKER}.2.fastq.gz" \
+    "$RAWDIR/${SAMPLE}_R1.fastq.gz" \
+    "$RAWDIR/${SAMPLE}_R2.fastq.gz" \
+    > "$OUTDIR/$MARKER/${SAMPLE}_${MARKER}_cutadapt_report.txt" 2>&1
   done
 done
 ```
