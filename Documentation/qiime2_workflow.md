@@ -118,14 +118,30 @@ Next, you want to use a QIIME import function to make a .qza artifact containing
 
 ```
 ## create manifest file
+
 pwd > "$LIB"_pwd.tmptxt
+## This collects the current working directory and saves it to a temporary file named {LIB}_pwd.tmptxt, where $LIB is a variable.
+
 find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
+##Finds all .gz files in current directory and subdirectories
+##sorts the list and removes all duplicates
+##Splits paths by / and takes the second field (aka, extracts the filenames from the ./filename)
+##Saves results
+
 cut -f 1 -d "_" "$LIB"_filenames.tmptxt > "$LIB"_col1.tmptxt
+## Extracts sample ID by taking everything before the first underscore in the filename
+
 wc -l "$LIB"_col1.tmptxt | cut -f 1 -d ' ' > "$LIB"_lines.tmptxt
+## Counts the number of lines in each file, extracts just the number, and saves count to LIB
+
 seq $(echo $(cat "$LIB"_lines.tmptxt)) | xargs -Iz echo $(cat "$LIB"_pwd.tmptxt) > "$LIB"_dirpath.tmptxt
+##Generates a sequence from 1 to N number of files. For each number, it repeats the directory path N times, and creates a file with the same directory repeated for each file.
+
 paste "$LIB"_dirpath.tmptxt "$LIB"_filenames.tmptxt -d "/" > "$LIB"_col2.tmptxt
+## Combines the directory path and the filename with / as a separator, creating full absolute file paths.
+
 for i in $(cat "$LIB"_filenames.tmptxt); do
-if [[ $i == *_1.fastq.gz ]];
+if [[ $i == *.1.fastq.gz ]];
 then
   echo "forward"
 else
@@ -133,6 +149,33 @@ else
 fi;
 done > "$LIB"_col3.tmptxt
 paste "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt -d "," > "$LIB"_manifest.tmptxt
+echo 'sample-id,absolute-filepath,direction' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
+rm *.tmptxt
+## Filter forward (.1.) and reverse (.2.) reads and combine all three columns into a CSV format while removing all temporary files
+
+```
+All together:
+
+```
+##For MiFishU
+
+LIB="MiFishU"
+
+pwd > "$LIB"_pwd.tmptxt
+find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
+cut -f 1 -d "_" "$LIB"_filenames.tmptxt > "$LIB"_col1.tmptxt
+wc -l "$LIB"_col1.tmptxt | awk '{print $1}' > "$LIB"_lines.tmptxt
+yes $(cat "$LIB"_pwd.tmptxt) | head -n $(cat "$LIB"_lines.tmptxt) > "$LIB"_dirpath.tmptxt
+paste -d "/" "$LIB"_dirpath.tmptxt "$LIB"_filenames.tmptxt > "$LIB"_col2.tmptxt
+for i in $(cat "$LIB"_filenames.tmptxt); do
+if [[ $i == *.1.fastq.gz ]];
+then
+  echo "forward"
+else
+  echo "reverse"
+fi;
+done > "$LIB"_col3.tmptxt
+paste -d "," "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt > "$LIB"_manifest.tmptxt
 echo 'sample-id,absolute-filepath,direction' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
 rm *.tmptxt
 
