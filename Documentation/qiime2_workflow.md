@@ -21,12 +21,12 @@ For command line history: cat ~/.zsh_history
 $RAWDIR points to the libraries of stored sequence data.
 
 ```
-RAWDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/raw/all_reads/    
+RAWDIR=/Volumes/ROSALIND/eDNA_Pilots/WWorth/raw/all_reads/    
 ```
 
 $OUTDIR points to an output directory where trimmed reads are stored.
 ```
-OUTDIR_WW=/Volumes/ROSALIND/eDNA_Pilots/WWorth/WW_trimmed
+OUTDIR=/Volumes/ROSALIND/eDNA_Pilots/WWorth/WW_trimmed
 ```
 Demultiplexing all of the sequence data from primers using CutAdapt.
 Full primer library is listed here, copy and paste only what you need for runs.
@@ -37,6 +37,8 @@ FORWARD_PRIMERS=("mlCO1intF=GGWACWGGWTGAACWGTWTAYCCYCC"
                 "ITS-S2F=ATGCGATACTTGGTGTGAAT"
                 "16SV3&4F=GTGYCAGCMGCCGCGGTAA"
                 "12SV5F=ACTGGGATTAGATACCCC")
+
+
 
 REVERSE_PRIMERS=("jgHCO2198=TAIACYTCIGGRTGICCRAARAAYCA"
                 "18SV7&8R=GTGTGYACAAAGGBCAGGGAC"
@@ -79,12 +81,12 @@ for MARKER in "${MARKER_NAMES[@]}"; do
 done
 
 ## Now separate R1 from R2 and run.
-## Replace N with number of primers you are running
+## Replace N with number of primers you are running, (EVEN if you are only running one primer, you'll put "for i in {1..1}
 
 for SAMPLE in $(ls $RAWDIR | grep "_R1.fastq.gz" | sed 's/_R1.fastq.gz//' | sort -u); do
   echo "Processing sample: $SAMPLE"
 
-for i in {1..4}; do
+for i in {1..N}; do
   MARKER=${MARKER_NAMES[$i]}
   FWD=$(echo "${FORWARD_PRIMERS[$i]}" | cut -d'=' -f2)
   REV=$(echo "${REVERSE_PRIMERS[$i]}" | cut -d'=' -f2)
