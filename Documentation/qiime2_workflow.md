@@ -182,6 +182,12 @@ echo 'sample-id,absolute-filepath,direction' | cat - "$LIB"_manifest.tmptxt > ..
 rm *.tmptxt
 
 ```
+To view and convert the manifest file into a .tsv, add ".csv" extension to the file name and run the following to open in Excel. 
+
+```
+# Open with Excel
+open -a "Microsoft Excel" /Volumes/ROSALIND/eDNA_Pilots/SCreek/SC_trimmed/12SV5.manifest.file.csv
+```
 
 Import sequence data [O'Rourke](https://github.com/devonorourke/nhguano/blob/master/docs/sequence_processing.md)
 
