@@ -224,7 +224,7 @@ qiime cutadapt trim-paired \
   --p-cores 8 \
   --o-trimmed-sequences demux-trimmed.qza
 ```
-DADA2 Denoise Paired-End
+## DADA2 Denoise Paired-End
 
 ```
 ## generate repseqs
@@ -244,11 +244,44 @@ qiime metadata tabulate \
 
 ```
 
+## Combining DADA2 Datasets
 
+Each library is processed separately in DADA2 and therefore all ASV tables and representative seqeunce .qza files are combined into a single pair of artifacts. Note that $PFX refers to the parent directory path to the individual libraries with DADA2-processed .qza tables and rep seq files. 
 
+```
+# tables
+qiime feature-table merge
+  --i-tables "$PFX"/lib12/p12.raw_table.qza \
+  --i-tables "$PFX"/lib31/p31.raw_table.qza
+  --i-tables "$PFX"/lib32/p32.raw_table.qza \
+  --i-tables "$PFX"/lib41/p41.raw_table.qza
+  --i-tables "$PFX"/lib42/p42.raw_table.qza \
+  --i-tables "$PFX"/lib51/p51.raw_table.qza
+  --i-tables "$PFX"/lib52/p52.raw_table.qza \
+  --i-tables "$PFX"/lib71/p71.raw_table.qza
+  --i-tables "$PFX"/lib72/p72.raw_table.qza \
+  --o-merged-table tmp.raw_table.qza
 
+# sequences
+qiime feature-table merge-seqs
+  --i-data "$PFX"/lib12/p12.raw_repSeqs.qza \
+  --i-data "$PFX"/lib31/p31.raw_repSeqs.qza
+  --i-data "$PFX"/lib32/p32.raw_repSeqs.qza \
+  --i-data "$PFX"/lib41/p41.raw_repSeqs.qza
+  --i-data "$PFX"/lib42/p42.raw_repSeqs.qza \
+  --i-data "$PFX"/lib51/p51.raw_repSeqs.qza
+  --i-data "$PFX"/lib52/p52.raw_repSeqs.qza \
+  --i-data "$PFX"/lib71/p71.raw_repSeqs.qza
+  --i-data "$PFX"/lib72/p72.raw_repSeqs.qza \
+  --o-merged-data tmp.raw_repSeqs.qza
+```
 
+## Next Steps (O'Rourke)
 
+1) The tmp.raw_table.qza file will serve as input into the contamination overview outlined in the contamination workflow doc from O'Rourke. This includes evaluating seqeunce variants for potential wet-bench cross-contamination and sequencing platform contamination.
+2) If there is little evidence of pervasive contamination, then you may proceed to cluster the exact sequence variants (ASVs) into groups of representative variants sharing AT LEAST **98.5%** similarity.
+3) Subsequent cluseters are then classified using both alignment and kmer-based approaches, allowing for identification of target taxa.
+4) Subsequent OTUs are then analyzed according to diversity metrics. 
 
 
 
