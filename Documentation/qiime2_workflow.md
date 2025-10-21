@@ -263,13 +263,15 @@ qiime cutadapt trim-paired \
 ```
 ## generate repseqs
 qiime dada2 denoise-paired \
-  --p-n-threads 8
-  --p-trunc-len-f 181
-  --p-trunc-len-r 181 \
-  --i-demultiplexed-seqs "$LIB".demux.qza
-  --o-denoising-stats "$LIB".denoisingStats.qza \
-  --o-table "$LIB".raw_table.qza
-  --o-representative-sequences "$LIB".raw_repSeqs.qza \
+  --i-demultiplexed-seqs MiFish-demux.qza \
+  --p-n-threads 8 \
+  --p-trim-left-f 0 \
+  --p-trunc-len-f 275 \
+  --p-trim-left-r 0 \
+  --p-trunc-len-r 275 \
+  --o-denoising-stats MiFish-denoising-stats.qza \
+  --o-table MiFish-table.qza \
+  --o-representative-sequences MiFish-repSeqs.qza
 
 ## generate summary visualization
 qiime metadata tabulate \
