@@ -119,7 +119,7 @@ conda activate qiime2-amplicon-2024.10
 Next, you want to use a QIIME import function to make a .qza artifact containing all the unjoined paired end data. $QIIMEDIR refers to the path to the output path for the resulting QIIME artifact outputs.
 
 ```
-## create manifest file
+## create manifest file according to O'Rourke (filename:absolute-path:direction)
 
 pwd > "$LIB"_pwd.tmptxt
 ## This collects the current working directory and saves it to a temporary file named {LIB}_pwd.tmptxt, where $LIB is a variable.
@@ -182,6 +182,34 @@ echo 'sample-id,absolute-filepath,direction' | cat - "$LIB"_manifest.tmptxt > ..
 rm *.tmptxt
 
 ```
+
+However, the O'Rourke manifest may not work for paired end datasets (Not sure why, as his IS paired end). So, we reformatted and wrote this up. 
+
+```
+LIB="MiFishU"
+
+pwd > "$LIB"_pwd.tmptxt
+find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
+cut -f 1 -d "_" "$LIB"_filenames.tmptxt | sort -u > "$LIB"_col1.tmptxt
+wc -l "$LIB"_col1.tmptxt | awk '{print $1}' > "$LIB"_lines.tmptxt
+yes $(cat "$LIB"_pwd.tmptxt) | head -n $(cat "$LIB"_lines.tmptxt) > "$LIB"_dirpath.tmptxt
+
+for i in $(cat "$LIB"_col1.tmptxt); do
+  find . -name "${i}_*.1.fastq.gz" | head -n 1 | sed 's|^\./||'
+done > "$LIB"_forward_files.tmptxt
+paste -d "/" "$LIB"_dirpath.tmptxt "$LIB"_forward_files.tmptxt > "$LIB"_col2.tmptxt
+
+for i in $(cat "$LIB"_col1.tmptxt); do
+  find . -name "${i}_*.2.fastq.gz" | head -n 1 | sed 's|^\./||'
+done > "$LIB"_reverse_files.tmptxt
+paste -d "/" "$LIB"_dirpath.tmptxt "$LIB"_reverse_files.tmptxt > "$LIB"_col3.tmptxt
+
+paste -d "," "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt > "$LIB"_manifest.tmptxt
+echo 'sample-id,forward-absolute-filepath,reverse-absolute-filepath' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
+rm *.tmptxt
+
+```
+
 To view and convert the manifest file into a .tsv, add ".csv" extension to the file name and run the following to open in Excel. 
 
 ```
