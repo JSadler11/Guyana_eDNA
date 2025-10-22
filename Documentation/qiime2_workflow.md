@@ -228,7 +228,7 @@ qiime tools import \
 
 qiime demux summarize \
 --i-data demux.qza \
---p-n 50000 \\
+--p-n 50000 \
 --o-visualization demux-sumry.qzv
 ```
 qiime demux paired end reads with barcodes and metadata file. Two steps are listed below, first for primer filtering, then for trimming.
