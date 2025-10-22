@@ -261,7 +261,7 @@ qiime cutadapt trim-paired \
 ## DADA2 Denoise Paired-End
 
 ```
-## generate repseqs
+## generate repseqs, the repseqs and MiFish-table are also your ASVs
 qiime dada2 denoise-paired \
   --i-demultiplexed-seqs MiFish-demux.qza \
   --p-n-threads 8 \
@@ -270,14 +270,56 @@ qiime dada2 denoise-paired \
   --p-trim-left-r 0 \
   --p-trunc-len-r 275 \
   --o-denoising-stats MiFish-denoising-stats.qza \
-  --o-table MiFish-table.qza \
+  --o-table MiFish-table.qza \ 
   --o-representative-sequences MiFish-repSeqs.qza
 
-## generate summary visualization
+## generate summary visualization for metadata
 qiime metadata tabulate \
   --m-input-file "$LIB".denoisingStats.qza
   --o-visualization "$LIB".denoisingStats.qzv  
 
+## Summarize feature table and feature data
+
+qiime feature-table summarize-plus \
+  --i-table MiFish-table.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-summary asv-table.qzv \
+  --o-sample-frequencies sample-frequencies.qza \
+  --o-feature-frequencies asv-frequencies.qza
+
+qiime feature-table tabulate-seqs \
+  --i-data asv-seqs.qza \
+  --m-metadata-file asv-frequencies.qza \
+  --o-visualization asv-seqs.qzv
+
+```
+
+The feature-table and tabulate-seqs commands will prove a mapping of feature IDs to sequences, and provide links for BLAST'ing each sequence against the NCBI nt database. 
+
+You can also include the feature freq. information by passing it as metadata, but in this case we are looking at _feature_ metadata, and not _sample_ metadata. 
+
+Next, you can filter your feature data. First, remove any ASVs that only occur once. Then, use the resulting feature table to filter the sample sequences to only the ones present in the new table. 
+
+```
+qiime feature-table filter-features \
+  --i-table asv-table.qza \
+  --p-min-samples 2 \
+  --o-filtered-table asv-table-ms2.qza
+
+qiime feature-table filter-seqs \
+  --i-data asv-seqs.qza \
+  --i-table asv-table-ms2.qza \
+  --o-filtered-data asv-seqs-ms2.qza
+```
+Now, summarize your filtered data.
+
+```
+qiime feature-table summarize-plus \
+  --i-table asv-table-ms2.qza \
+  --m-metadata-file sample-metadata.tsv \
+  --o-summary asv-table-ms2.qzv \
+  --o-sample-frequencies sample-frequencies-ms2.qza \
+  --o-feature-frequencies asv-frequencies-ms2.qza
 ```
 
 ## Combining DADA2 Datasets
