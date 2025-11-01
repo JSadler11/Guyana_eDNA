@@ -113,3 +113,18 @@ qiime feature-classifier classify-sklearn \
 --i-classifier ~/eDNA_Kankakee_Guyana/Kankakee/database/bayesian_classifier_12S_Kankakee_jan2024derep.qza \
 --o-classification bayesian_taxonomy_jan2024.qza
 ```
+## BLAST General Use
+
+```
+#here you have to go to this website and check which one to download and enter it in the line below
+ https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+ 
+wget -N https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.17.0+-x64-linux.tar.gz 
+
+tar zxvpf ncbi-blast-2.17.0+-x64-linux.tar.gz 
+#Change the path so that it uses the new version of Blastn
+export PATH=$HOME/Storage/databases/databases/ncbi-blast-2.17.0+/bin:$PATH
+
+#update blast nt euk database
+update_blastdb.pl --decompress nt_euk [*]
+```
