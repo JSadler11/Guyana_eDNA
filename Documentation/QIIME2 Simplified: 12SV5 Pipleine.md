@@ -84,6 +84,7 @@ qiime dada2 denoise-paired \
 --p-trunc-len-f 95 \
 --p-trunc-len-r 95 \
 --output-dir DADA2_eDNA_SC_12SV5_len95 \
+--o-representative-sequences eDNA-SC_12SV5-repseqs.qza \
 --verbose \
 &
 
@@ -95,10 +96,20 @@ qiime metadata tabulate \
 # Representative sequences
 qiime feature-table tabulate-seqs \
 --i-data rep_seqs_SC_nano.qza \
---o-visualization rep_seqs_SC_nano.qzv
+--o-visualization rep_seqs_SC_12SV5.qzv
 
 # Feature table
 qiime feature-table summarize \
 --i-table table.qza \
 --o-visualization table.qzv
+```
+
+## Classification
+
+```
+qiime feature-classifier classify-sklearn \
+--p-n-jobs -2 \
+--i-reads eDNA-repseqs-SC-12SV5.qza \
+--i-classifier ~/eDNA_Kankakee_Guyana/Kankakee/database/bayesian_classifier_12S_Kankakee_jan2024derep.qza \
+--o-classification bayesian_taxonomy_jan2024.qza
 ```
