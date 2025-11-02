@@ -128,3 +128,20 @@ export PATH=$HOME/Storage/databases/databases/ncbi-blast-2.17.0+/bin:$PATH
 #update blast nt euk database
 update_blastdb.pl --decompress nt_euk [*]
 ```
+## Exporting RepSeqs
+
+```
+export BLASTDB=$HOME/Storage/databases/databases/ncbi-blast/nt_euk
+export PATH=$HOME/Storage/databases/databases/ncbi-blast-2.17.0+/bin:$PATH
+
+blastn
+-query ~/ecuador_poop_novaseq/representative_sequences.fasta
+-task megablast
+-db nt_euk
+-out ~/ecuador_poop_novaseq/blast_ecuador_pid90_qcov95.txt
+-max_target_seqs 100
+-perc_identity 90
+-qcov_hsp_perc 95
+-num_threads 8
+-outfmt "6 delim=, std qlen slen staxids sscinames scomnames sskingdoms"
+```
