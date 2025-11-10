@@ -145,3 +145,15 @@ blastn
 -num_threads 8
 -outfmt "6 delim=, std qlen slen staxids sscinames scomnames sskingdoms"
 ```
+My version...
+```
+blastn -query /Volumes/ROSALIND/sequences.fasta
+-task megablast
+-db nt_euk
+-out /Volumes/ROSALIND/blast_suramacreek.txt
+-max_target_seqs 200
+-perc_identity 90
+-qcov_hsp_perc 95
+-num_threads 8
+-outfmt "6 delim=, std qlen slen staxids sscinames scomnames sskingdoms"
+```
