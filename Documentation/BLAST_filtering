@@ -1,0 +1,50 @@
+library(tidyr)
+library(dplyr)
+
+# For blast filtering we want to start with 98% identity and e-values less than 0.001
+# Limit results to the top five best-scoring hits per query (max_target_seqs 5)
+
+# Our outputs don't have the above though, so we will do that in R'
+
+# Read in BLAST results
+blast_12S <- blast_suramacreek_11_14
+blast_18S <- blast_suramacreek_18S_11_14
+
+# Filter by e-value and percent identity
+filtered_12S <- blast_12S %>%
+  filter(blast_12S$evalue <= 1e-3) %>%      # Keep only e-values <= 1e-3
+  filter(blast_12S$pident >= 98)                # Keep only matches with >= 95% identity
+
+filtered_18S <- blast_18S %>%
+  filter(blast_18S$evalue <= 1e-3) %>%      # Keep only e-values <= 1e-3
+  filter(blast_18S$pident >= 98)   
+
+# View the filtered results
+head(filtered_12S)
+head(filtered_18S)
+
+filtered_12S <- filtered_12S %>%
+  filter(sscinames != "Homo sapiens")
+
+sum(filtered_12S$sscinames == "Homo sapiens")
+
+unique(filtered_12S$sscinames)
+
+species_counts_12S <- filtered_12S %>%
+  count(sscinames, sort = TRUE) %>%
+  rename(Species = sscinames, Count = n)
+
+species_counts_18S <- filtered_18S %>%
+  count(sscinames, sort = TRUE) %>%
+  rename(Species = sscinames, Count = n)
+
+# Optional: Get the best hit per query
+best_hits_12S <- filtered_12S %>%
+  group_by(qseqid) %>%
+  slice_min(evalue, n = 5, with_ties = TRUE)
+  ungroup()
+
+best_hits_18S <- filtered_18S %>%
+  group_by(qseqid) %>%
+  slice_min(evalue, n = 5, with_ties = TRUE) %>%       # Get lowest e-value per query
+  ungroup()
