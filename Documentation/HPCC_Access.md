@@ -93,9 +93,8 @@ qiime feature-table tabulate-seqs \
 echo "QIIME2 amplicon processing complete!"
 ```
 
-**Before running, you'll need to create:**
-
-1. **manifest.tsv** - A tab-delimited file listing your samples:
+**Before running, need to create:**
+Manifest.tsv
 ```
 sample-id	forward-absolute-filepath	reverse-absolute-filepath
 Sample1	/path/to/Sample1_R1.fastq.gz	/path/to/Sample1_R2.fastq.gz
