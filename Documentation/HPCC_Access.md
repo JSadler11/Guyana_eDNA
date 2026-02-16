@@ -41,11 +41,13 @@ Basic pipeline structure (NEEDS MODIFYING)
 #!/bin/bash
 #SBATCH --job-name=qiime2_amplicon
 #SBATCH --partition=mw128  # Adjust to your cluster partition
-#SBATCH --output=qiime2.stdout
+#SBATCH --output=qiime2.stdout # Always want to be setting output to the command line, aka stdout
 #SBATCH --error=qiime2.stderr
-#SBATCH -n 16  # QIIME2 can use multiple cores for some steps
-#SBATCH --mem 64G  # Memory depends on dataset size
-#SBATCH --time=24:00:00  # Set appropriate time limit
+#SBATCH -n 48  # QIIME2 can use multiple cores for some steps
+#SBATCH --mem 120G  # Memory depends on dataset size
+
+scratch_dir="/localscratch/qiime"
+local_dir=$pwd
 
 # Load QIIME2 (adjust based on your cluster's module system)
 module load qiime2  # or: source activate qiime2
