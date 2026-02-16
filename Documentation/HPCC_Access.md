@@ -16,24 +16,52 @@ Submit job:
 
 ```
 #!/bin/bash
-#SBATCH --job-name=meta #Name of Job
-#SBATCH --partition=mw128 #Cluster to run from
-#SBATCH --output=meta.stdout #File name for standard out
-#SBATCH --error=meta.stderr #File name for standard error
-#SBATCH -n 48 #Number of processors on node
-#SBATCH --mem 120G
-#SBATCH --exclusive #Ensures that all processors are on the same node
 
-scratch=/localscratch/meta
+#SBATCH --job-name=core
+#SBATCH --partition=mw128
+#SBATCH --output=out_core_%j.stdout
+#SBATCH --error=err_core_%j.stderr
+#SBATCH -n 48
+#SBATCH --mem=120G
+#SBATCH --exclusive #This means to completely use this node
 
-rm -rf  $scratch
+node=$(hostname)
+
+scratch=/localscratch/core_$node
+local_dir="/zfshomes/sacharya01/cis_tilda/"
+
+echo "These is from core excitations"
+
+rm -rf $scratch
 mkdir -p $scratch
-cd
-cp meta_dft.gjf $scratch/
+cd $local_dir
+cp *.chk $scratch/
+cp core.py $scratch/
 
 cd $scratch
 export OMP_NUM_THREADS=48
-gdv meta_dft.gjf
+
+starttime=$(date '+%Y-%m-%d %H:%M:%S')
+
+python core.py --chk polygly_24a.chk # Instead of python file you could put your Qiime methods here.
+
+endtime=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo
+printf '%.0s' {1..30}
+printf '%.0s' {1..30}
+echo
+printf "%-25s %-25s\n" "Start Time" "End Time"
+printf "%-25s %-25s\n" "$starttime" "$endtime"
+echo 
+printf '%.0s' {1..30}
+printf '%.0s' {1..30}
+echo
+
+echo "Current node :: $node"
+echo "Current jobs jobid :: ${SLURM_JOB_ID}"
+
+cp -r  $scratch "$local_dir/outputs/gly24e_core_${SLURM_JOB_ID}"
 ```
 Basic pipeline structure (NEEDS MODIFYING)
 
