@@ -1,7 +1,7 @@
 ## Create manifest
 
 ```
-LIB="MiFishU"
+LIB="project_12SV5"
 
 pwd > "$LIB"_pwd.tmptxt
 find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
@@ -45,7 +45,7 @@ qiime tools import \
 
 qiime demux summarize \
 --i-data demux.qza \
---p-n 50000 \
+--p-n 200000 \
 --o-visualization demux.qzv
 ```
 
@@ -63,7 +63,7 @@ Detecting the reverse primers (in RC) will get rid of the adapters too as they a
 while inspecting the fastq pre processing files:
 
 
-#Trim amplicon primers in two steps only the reverse for now
+Trim amplicon primers in two steps only the reverse for now
 
 ```
 qiime cutadapt trim-paired \
