@@ -1,36 +1,3 @@
-## Create manifest
-
-```
-LIB="project_12SV5"
-
-pwd > "$LIB"_pwd.tmptxt
-find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
-cut -f 1 -d "_" "$LIB"_filenames.tmptxt | sort -u > "$LIB"_col1.tmptxt
-wc -l "$LIB"_col1.tmptxt | awk '{print $1}' > "$LIB"_lines.tmptxt
-yes $(cat "$LIB"_pwd.tmptxt) | head -n $(cat "$LIB"_lines.tmptxt) > "$LIB"_dirpath.tmptxt
-
-for i in $(cat "$LIB"_col1.tmptxt); do
-  find . -name "${i}_*.1.fastq.gz" | head -n 1 | sed 's|^\./||'
-done > "$LIB"_forward_files.tmptxt
-paste -d "/" "$LIB"_dirpath.tmptxt "$LIB"_forward_files.tmptxt > "$LIB"_col2.tmptxt
-
-for i in $(cat "$LIB"_col1.tmptxt); do
-  find . -name "${i}_*.2.fastq.gz" | head -n 1 | sed 's|^\./||'
-done > "$LIB"_reverse_files.tmptxt
-paste -d "/" "$LIB"_dirpath.tmptxt "$LIB"_reverse_files.tmptxt > "$LIB"_col3.tmptxt
-
-paste -d "," "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt > "$LIB"_manifest.tmptxt
-echo 'sample-id,forward-absolute-filepath,reverse-absolute-filepath' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
-rm *.tmptxt
-
-```
-
-To view and convert the manifest file into a .tsv, add ".csv" extension to the file name and run the following to open in Excel. 
-
-```
-# Open with Excel
-open -a "Microsoft Excel" /Volumes/ROSALIND/eDNA_Pilots/SCreek/SC_trimmed/12SV5.manifest.file.csv
-```
 
 ## Import into Qiime
 
@@ -220,4 +187,48 @@ best_hits_18S <- filtered_18S %>%
   group_by(qseqid) %>%
   slice_min(evalue, n = 5, with_ties = TRUE) %>%       # Get lowest e-value per query
   ungroup()
+
+#Other
+## Create manifest
+
+Running in Docker, first we want to mount the external drive: 
+
+```
+docker run -it --rm \
+  -v "/Volumes/ROSALIND:/Volumes/ROSALIND" \
+  quay.io/qiime2/amplicon:2024.10
+```
+
+```
+LIB="project_12SV5"
+
+pwd > "$LIB"_pwd.tmptxt
+find . -name "*.gz" | sort -u | cut -d '/' -f 2 > "$LIB"_filenames.tmptxt
+cut -f 1 -d "_" "$LIB"_filenames.tmptxt | sort -u > "$LIB"_col1.tmptxt
+wc -l "$LIB"_col1.tmptxt | awk '{print $1}' > "$LIB"_lines.tmptxt
+yes $(cat "$LIB"_pwd.tmptxt) | head -n $(cat "$LIB"_lines.tmptxt) > "$LIB"_dirpath.tmptxt
+
+for i in $(cat "$LIB"_col1.tmptxt); do
+  find . -name "${i}_*.1.fastq.gz" | head -n 1 | sed 's|^\./||'
+done > "$LIB"_forward_files.tmptxt
+paste -d "/" "$LIB"_dirpath.tmptxt "$LIB"_forward_files.tmptxt > "$LIB"_col2.tmptxt
+
+for i in $(cat "$LIB"_col1.tmptxt); do
+  find . -name "${i}_*.2.fastq.gz" | head -n 1 | sed 's|^\./||'
+done > "$LIB"_reverse_files.tmptxt
+paste -d "/" "$LIB"_dirpath.tmptxt "$LIB"_reverse_files.tmptxt > "$LIB"_col3.tmptxt
+
+paste -d "," "$LIB"_col1.tmptxt "$LIB"_col2.tmptxt "$LIB"_col3.tmptxt > "$LIB"_manifest.tmptxt
+echo 'sample-id,forward-absolute-filepath,reverse-absolute-filepath' | cat - "$LIB"_manifest.tmptxt > ../$(echo "$LIB").manifest.file
+rm *.tmptxt
+
+```
+
+To view and convert the manifest file into a .tsv, add ".csv" extension to the file name and run the following to open in Excel. 
+
+```
+# Open with Excel
+open -a "Microsoft Excel" /Volumes/ROSALIND/eDNA_Pilots/SCreek/SC_trimmed/12SV5.manifest.file.csv
+```
+
   ```
