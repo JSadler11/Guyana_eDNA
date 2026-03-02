@@ -1,4 +1,4 @@
-
+Using core packages and setting dependencies.
 ```
 library(tidyverse)
 library(readr)
@@ -15,15 +15,10 @@ library(emmeans)
 library(lsmeans)
 library(gratia)
 setwd("WP2_analysis/12S_BLAST")
-#________________________________________________________
 ```
+Removing 12S sequences in the taxtable that are the wrong size,then BLASTing with a broad 12S database to remove sequences that are assigned to other things that are not fish.
+
 ```
-
-#Removing 12S sequences in the taxtable that are the wrong size,then BLASTing with a broad 12S database to remove
-#sequences that are assigned to other things that are not fish
-
-#________________________________________________________
-
 taxTab_WP2_12S <- read_table2("taxTab_WP2_12S.txt")
 taxTab_WP2_12S$Kingdom <-NULL
 taxTab_WP2_12S$Phylum <-NULL
