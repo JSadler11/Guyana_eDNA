@@ -48,71 +48,73 @@ setwd("WP2_analysis/12S_BLAST")
 ## 2. Stage 1 — ASV Length Filtering & BLAST Input Preparation
 
 ### Purpose
-The MiFish primer set targets a ~172 bp region of the 12S rRNA gene. ASVs that fall outside ±20% of this expected length (i.e. shorter than 137.6 bp or longer than 206.2 bp) are assumed to be artefacts and are removed before BLASTing. The surviving sequences are renamed with FASTA-style headers and exported as a `.fasta`-formatted file ready for submission to NCBI BLAST against the broad "12S rRNA gene" database.
+The Riaz 12SV5 primer set targets a ~110 bp region of the 12S rRNA gene. ASVs that fall outside ±20% of this expected length (i.e. shorter than 88 bp or longer than 132 bp) are assumed to be artefacts and are removed before BLASTing. The surviving sequences are renamed with FASTA-style headers and exported as a `.fasta`-formatted file ready for submission to NCBI BLAST against the broad "12S rRNA gene" database.
 
 > **Cluster BLAST parameters (Pass 1):** `-perc_identity 70 -qcov_hsp_perc 80 -evalue 1`
 >
-> These deliberately permissive settings are used to cast a wide net and identify any non-fish sequences before the stricter fish-only pass.
+> These deliberately permissive settings are used to cast a wide net and identify any non-fish sequences before the stricter fish-only pass for the Perry paper. However, we are looking for ASVs that correspond to non-fish species and will only exclude non-native species, or human/human commensal ASVs.
 
 ```r
 #________________________________________________________
-# Removing 12S sequences in the taxtable that are the wrong size, then BLASTing
-# with a broad 12S database to remove sequences assigned to non-fish taxa
+# Removing 12S sequences in the taxtable that are the wrong size, then BLAST'ing
+# with a broad 12S database.
 #________________________________________________________
 
 taxTab_WP2_12S <- read_table2("taxTab_WP2_12S.txt")
 
 # Strip pre-existing taxonomy columns — only the raw sequences are needed for length filtering
-taxTab_WP2_12S$Kingdom <-NULL
-taxTab_WP2_12S$Phylum <-NULL
-taxTab_WP2_12S$Class <-NULL
-taxTab_WP2_12S$Order <-NULL
-taxTab_WP2_12S$Family <-NULL
-taxTab_WP2_12S$Genus <-NULL
-taxTab_WP2_12S$Species <-NULL
+repseqs_12SV5$Kingdom <-NULL
+repseqs_12SV5$Phylum <-NULL
+repseqs_12SV5$Class <-NULL
+repseqs_12SV5$Order <-NULL
+repseqs_12SV5$Family <-NULL
+repseqs_12SV5$Genus <-NULL
+repseqs_12SV5$Species <-NULL
 
 # Calculate the character length of each unique ASV sequence
-taxTab_WP2_12S_length<-aggregate(Seq~Seq_length, transform(taxTab_WP2_12S, Seq_length=Seq),
+repseqs_12SV5_length<-aggregate(Seq~Seq_length, transform(repseqs_12SV5, Seq_length=Seq),
                                         FUN=function(x) nchar(unique(x)))
-hist(taxTab_WP2_12S_length$Seq)
+hist(repseqs_12SV5_length$Seq)
 
-# Remove ASVs >20% longer than the expected MiFish amplicon size (172 bp → upper limit 206.2 bp)
-taxTab_WP2_12S_length<-taxTab_WP2_12S_length[!(taxTab_WP2_12S_length$Seq>206.2),]
+# Remove ASVs >20% longer than the expected MiFish amplicon size (110 bp → upper limit 132 bp)
+repseqs_12SV5_length<-repseqs_12SV5_length[!(repseqs_12SV5_length$Seq>132),]
 
-# Remove ASVs >20% shorter than the expected MiFish amplicon size (172 bp → lower limit 137.6 bp)
-taxTab_WP2_12S_length<-taxTab_WP2_12S_length[!(taxTab_WP2_12S_length$Seq<137.6),]
-hist(taxTab_WP2_12S_length$Seq)
+# Remove ASVs >20% shorter than the expected MiFish amplicon size (110 bp → lower limit 88 bp)
+repseqs_12SV5_length<-repseqs_12SV5_length[!(repseqs_12SV5_length$Seq<88),]
+hist(repseqs_12SV5_length$Seq)
 
+#We should be reading directly from a .fasta file, so FASTA id's don't need to be created.
 # Assign sequential FASTA-style IDs (>SEQ1, >SEQ2, ...) to the length-filtered sequences
-taxTab_WP2_12S_length$Seq_number <- 1:nrow(taxTab_WP2_12S_length) 
-taxTab_WP2_12S_length$Seq<-"SEQ"
-taxTab_WP2_12S_length$div<-">"
+# taxTab_WP2_12S_length$Seq_number <- 1:nrow(taxTab_WP2_12S_length) 
+# taxTab_WP2_12S_length$Seq<-"SEQ"
+# taxTab_WP2_12S_length$div<-">"
 
-taxTab_WP2_12S_length$Seq_number <-paste(taxTab_WP2_12S_length$div,taxTab_WP2_12S_length$Seq,taxTab_WP2_12S_length$Seq_number)
-taxTab_WP2_12S_length$Seq_number = as.character(gsub(" ", "", taxTab_WP2_12S_length$Seq_number))
+# taxTab_WP2_12S_length$Seq_number <-paste(taxTab_WP2_12S_length$div,taxTab_WP2_12S_length$Seq,taxTab_WP2_12S_length$Seq_number)
+# taxTab_WP2_12S_length$Seq_number = as.character(gsub(" ", "", taxTab_WP2_12S_length$Seq_number))
 
-taxTab_WP2_12S_length$Seq <-NULL
-taxTab_WP2_12S_length$div <-NULL
+# taxTab_WP2_12S_length$Seq <-NULL
+# taxTab_WP2_12S_length$div <-NULL
 
+# NOTE: We may need this step
 # Save lookup table: links SEQ IDs back to their original sequence lengths (needed for joining later)
-write.table(taxTab_WP2_12S_length,"length_filtered_SEQ_to_sequence_lookup_table.txt",quote = FALSE)
+write.table(repseqs_12SV5_length,"length_filtered_SEQ_to_sequence_lookup_table.txt",quote = FALSE)
 
 # Format each entry as a two-line FASTA record (header\nsequence) by replacing the space separator with a newline
-taxTab_WP2_12S_length$Seq <-paste(taxTab_WP2_12S_length$Seq_number,taxTab_WP2_12S_length$Seq_length)
-taxTab_WP2_12S_length$Seq <- as.character(gsub(" ", "\n", taxTab_WP2_12S_length$Seq))
+repseqs_12SV5_length$Seq <-paste(repseqs_12SV5_length$Seq_number,repseqs_12SV5_length$Seq_length)
+repseqs_12SV5_length$Seq <- as.character(gsub(" ", "\n", repseqs_12SV5_length$Seq))
 
 # Retain a standalone lookup dataframe (SEQ ID ↔ sequence length) for use after BLAST
-length_adjust_Seq_number<-taxTab_WP2_12S_length$Seq_number
+length_adjust_Seq_number<-repseqs_12SV5_length$Seq_number
 length_adjust_Seq_number<-data.frame(length_adjust_Seq_number)
-length_adjust_Seq_number$Seq_length<-taxTab_WP2_12S_length$Seq_length
+length_adjust_Seq_number$Seq_length<-repseqs_12SV5_length$Seq_length
 
-taxTab_WP2_12S_length$Seq_number<-NULL
-taxTab_WP2_12S_length$Seq_length<-NULL
+repseqs_12SV5_length$Seq_number<-NULL
+repseqs_12SV5_length$Seq_length<-NULL
 
 # Export the length-filtered sequences as a FASTA-formatted CSV: this is the BLAST input file
-write.csv(taxTab_WP2_12S_length,"length_filtered_taxTab_WP2_12S_BLAST_INPUT.fasta", row.names=FALSE,quote = FALSE)
+write.csv(repseqs_12SV5_length,"length_filtered_taxTab_WP2_12S_BLAST_INPUT.fasta", row.names=FALSE,quote = FALSE)
 
-# --> Now BLAST this on the cluster using the "12S rRNA gene" database:
+# --> Now BLAST this on the cluster using the "12SV5 gene" database:
 #     -perc_identity 70 -qcov_hsp_perc 80 -evalue 1
 ```
 
@@ -121,7 +123,9 @@ write.csv(taxTab_WP2_12S_length,"length_filtered_taxTab_WP2_12S_BLAST_INPUT.fast
 ## 3. Stage 2 — Two-Pass BLAST: Non-fish Removal & Fish-Only Re-BLAST
 
 ### Purpose
-BLAST results are handled in two sequential passes. The first pass uses a broad 12S database to identify and discard any ASVs assigned to non-fish taxa (e.g. mammals). Only sequences classified as ray-finned fish (`Actinopteri`) are retained. These fish-only sequences are then formatted for a second, stricter BLAST against a curated mitogenome database to achieve species-level taxonomic resolution.
+The Perry paper handled BLAST results in two sequential passes. The first pass used a broad 12S database to identify and discard any ASVs assigned to non-fish taxa (e.g. mammals). Only sequences classified as ray-finned fish (`Actinopteri`) were retained. These fish-only sequences were then formatted for a second, stricter BLAST against a curated mitogenome database to achieve species-level taxonomic resolution.
+
+For our purposes, we want to start with a specific BLAST analysis, and will then pass our fish ASVs through Sophie's classifier.
 
 ---
 
@@ -158,46 +162,47 @@ length_adjust_Seq_number_mammals<-length_adjust_Seq_number %>% filter(class == "
 
 ---
 
-### Pass 1 → Pass 2 — Format fish-only sequences for mitogenome BLAST
+### Pass 1 → Pass 2 — Format fish-only sequences for Sophie's Classifier
 
 ```r
 # Reformat the fish-only ASVs into FASTA structure for the second BLAST run
-BLAST_2_mito<-length_adjust_Seq_number_fish$Seq
-BLAST_2_mito<-data.frame(BLAST_2_mito)
-BLAST_2_mito$Seq<-length_adjust_Seq_number_fish$Seq_length
+BLAST_2_fish<-length_adjust_Seq_number_fish$Seq
+BLAST_2_fish<-data.frame(BLAST_2_fish)
+BLAST_2_fish$Seq<-length_adjust_Seq_number_fish$Seq_length
 
-BLAST_2_mito$Seq_BLAST <-paste(">",BLAST_2_mito$BLAST_2_mito,BLAST_2_mito$Seq)
-BLAST_2_mito$Seq_BLAST<- gsub("> ", ">", BLAST_2_mito$Seq_BLAST)
-BLAST_2_mito$Seq_BLAST<- as.character(gsub(" ", "\n", BLAST_2_mito$Seq_BLAST))
+BLAST_2_fish$Seq_BLAST <-paste(">",BLAST_2_fish$BLAST_2_fish,BLAST_2_fish$Seq)
+BLAST_2_fish$Seq_BLAST<- gsub("> ", ">", BLAST_2_fish$Seq_BLAST)
+BLAST_2_fish$Seq_BLAST<- as.character(gsub(" ", "\n", BLAST_2_fish$Seq_BLAST))
 
-BLAST_2_mito$Seq<-NULL
-BLAST_2_mito$BLAST_2_mito<-NULL
+BLAST_2_fish$Seq<-NULL
+BLAST_2_fish$BLAST_2_fish<-NULL
 
-# Export fish-only sequences as input for the mitogenome BLAST
-write.csv(BLAST_2_mito,"length_filtered_taxTab_WP2_12S_BLAST_INPUT_FISH_ONLY.fasta", row.names=FALSE,quote = FALSE)
-remove(BLAST_2_mito, length_adjust_Seq_number)
+# Export fish-only sequences as input for Sophie's QIIME2 Classifier
+write.csv(BLAST_2_fish,"length_filtered_repseqs_12SV5_BLAST_INPUT_FISH_ONLY.fasta", row.names=FALSE,quote = FALSE)
+remove(BLAST_2_fish, length_adjust_Seq_number)
 
-# --> Now BLAST this on the cluster using the mitogenome database:
+# --> Now run this on the cluster in QIIME2 2023:
 #     -perc_identity 90 -qcov_hsp_perc 90 -evalue 0.001
 #     (stricter thresholds appropriate for species-level assignment)
 ```
 
 ---
 
-### Pass 2 — Read back mitogenome BLAST results and attach taxonomy
+### Pass 2 — Read back Sophie's Classifier results and attach taxonomy
 
 ```r
 #________________________________________________________
-# Read in the fish-only BLAST output generated against the mitogenome database
+# Read in the fish-only Classifier output generated against the general BLAST database
 #________________________________________________________
 
 BLAST_OUTPUT_12S <- read_table2("BLAST_OUTPUT_FISH_ONLY_12S.txt", col_names = FALSE)
 BLAST_OUTPUT_12S<-BLAST_OUTPUT_12S %>% rename(rn = X2 )
 
+# I don't think we'll need this, but keep it here in case useful
 # Strip formatting artefacts from NCBI reference accession numbers (e.g. "ref|NC_012345|" → "NC_012345")
-mitogenome_annotations <- read_csv("mitogenome_annotations.csv")
-BLAST_OUTPUT_12S$rn <- gsub("ref|", "", BLAST_OUTPUT_12S$rn)
-BLAST_OUTPUT_12S$rn <- gsub("\\|", "", BLAST_OUTPUT_12S$rn)
+# mitogenome_annotations <- read_csv("mitogenome_annotations.csv")
+# BLAST_OUTPUT_12S$rn <- gsub("ref|", "", BLAST_OUTPUT_12S$rn)
+# BLAST_OUTPUT_12S$rn <- gsub("\\|", "", BLAST_OUTPUT_12S$rn)
 
 # Join species-level taxonomy from the mitogenome annotation table using accession number as the key
 BLAST_OUTPUT_12S <- BLAST_OUTPUT_12S %>% full_join(mitogenome_annotations, by = c("rn"))
