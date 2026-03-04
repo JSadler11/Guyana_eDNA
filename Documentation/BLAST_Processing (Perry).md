@@ -12,10 +12,6 @@ This document walks through the full analysis pipeline for the LOFRESH WP2 12S M
 4. [Stage 3 — ASV Table Construction, Decontamination & Normalisation](#4-stage-3--asv-table-construction-decontamination--normalisation)
 5. [Stage 4 — Per-River Biological Curation & Community Visualisation](#5-stage-4--per-river-biological-curation--community-visualisation)
    - [WP2A (Conwy)](#wp2a-conwy)
-   - [WP2C Glatt (Switzerland)](#wp2c-glatt-switzerland)
-   - [WP2C Towy (Carmarthenshire)](#wp2c-towy-carmarthenshire)
-   - [WP2C Gwash (Leicestershire)](#wp2c-gwash-leicestershire)
-   - [WP2C Skaneateles (New York)](#wp2c-skaneateles-new-york)
 6. [Stage 5 — Alpha Diversity: Metrics, Modelling & Cross-River Comparison](#6-stage-5--alpha-diversity-metrics-modelling--cross-river-comparison)
 7. [Stage 6 — Beta Diversity: PERMANOVA, NMDS & Multivariate Analysis](#7-stage-6--beta-diversity-permanova-nmds--multivariate-analysis)
 
