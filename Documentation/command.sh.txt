@@ -1,0 +1,101 @@
+#!/bin/bash
+# ------------------------------------
+# Source configuration
+# ------------------------------------
+source config.sh
+# ------------------------------------
+# Setting up the Pipeline
+# ------------------------------------
+declare -A PIPELINE
+
+# ------------------------------------
+# Commands to be run
+# ------------------------------------
+PIPELINE["Step 01: Import sequence files"]="qiime tools import \
+        --type \"SampleData[PairedEndSequencesWithQuality]\" \
+        --input-path $tsv_file \
+        --output-path demux.qza \
+        --input-format PairedEndFastqManifestPhred33V2"
+
+PIPELINE["Step 02: Import summary"]="qiime demux summarize \
+        --i-data demux.qza \
+        --p-n 200000 \
+        --o-visualization demux.qzv"
+
+# Now we will run cutadapt to trim illimina adapters, and primers in two steps
+# Here is the Illumina adapter removal
+PIPELINE["Step 03: Trim Illumina Adapters"]="qiime cutadapt trim-paired \
+        --i-demultiplexed-sequences demux.qza \
+        --p-cores 48 \
+        --p-adapter-f TCCCTACACGACGCTCTTCCGATCTNNNNNN \
+        --p-adapter-r GTTCAGACGTGTGCTCTTCCGATCTNNNNNN \
+        --p-match-read-wildcards TRUE \
+        --p-match-adapter-wildcards TRUE \
+        --p-error-rate 0.1 \
+        --o-trimmed-sequences illumina_adapter_trimmed.qza \
+        --verbose"
+PIPELINE["Step 04: Adapter trim summary"]="qiime demux summarize \
+        --i-data illumina_adapter_trimmed.qza \
+        --o-visualization illumina_adapter_trimmed.qzv"
+
+# Here is part one of primer trimming, removing the reverse primers
+PIPELINE["Step 05: Part 1 of 12SV5 Trim"]="qiime cutadapt trim-paired \
+        --i-demultiplexed-sequences illumina_adapter_trimmed.qza \
+        --p-cores 48 \
+        --p-adapter-f CTAGAGGAGCCTGTTCTA \
+        --p-adapter-r GGGGTATCTAATCCCAGT \
+        --p-match-read-wildcards TRUE \
+        --p-error-rate 0.25 \
+        --o-trimmed-sequences adapter_and_primerp1.qza \
+        --verbose"
+PIPELINE["Step 06: Part 1 12SV5 Trim Summary"]="qiime demux summarize \
+        --i-data adapter_and_primerp1.qza \
+        --o-visualization adapter_and_primerp1.qzv"
+
+# Here is the final trimming step, step two of primers and step three total.
+PIPELINE["Step 07: Part 2 of 12SV5 Trim"]="qiime cutadapt trim-paired \
+        --i-demultiplexed-sequences adapter_and_primerp1.qza \
+        --p-cores 48 \
+        --p-front-f ACTGGGATTAGATACCCC \
+        --p-front-r TAGAACAGGCTCCTCTAG \
+        --p-match-read-wildcards TRUE \
+        --p-discard-untrimmed TRUE \
+        --p-match-adapter-wildcards TRUE \
+        --o-trimmed-sequences cutadapt_12SV5_finished.qza \
+        --verbose"
+PIPELINE["Step 08: Part 2 12SV5 Trim Summary"]="qiime demux summarize \
+        --i-data cutadapt_12SV5_finished.qza \
+        --o-visualization cutadapt_12SV5_finished.qzv"
+
+# Next is denoising and DADA2
+PIPELINE["Step 09: DADA2 Denoise Paired"]="qiime dada2 denoise-paired \
+        --p-n-threads 48 \
+        --i-demultiplexed-seqs cutadapt_12SV5_finished.qza \
+        --p-trim-left-f 0 \
+        --p-trim-left-r 0 \
+        --p-trunc-len-f 95 \
+        --p-trunc-len-r 95 \
+        --o-table table.qza \
+        --o-representative-sequences repseqs_12SV5_s25_test.qza \
+        --o-denoising-stats denoising_stats.qza \
+        --verbose"
+
+# Tabulate denoising stats
+PIPELINE["Step 10: Denoising Statistics"]="qiime metadata tabulate \
+        --m-input-file denoising_stats.qza \
+        --o-visualization denoising_stats.qzv"
+
+# Tabulate representative sequences
+PIPELINE["Step 11: Representative Sequences"]="qiime feature-table tabulate-seqs \
+        --i-data repseqs_12SV5_s25_test.qza \
+        --o-visualization repseqs_12SV_s25_test.qzv"
+
+# Summarize feature table
+PIPELINE["Step 12: Feature Table"]="qiime feature-table summarize \
+        --i-table table.qza \
+        --o-visualization table.qzv"
+
+
+        
+
+

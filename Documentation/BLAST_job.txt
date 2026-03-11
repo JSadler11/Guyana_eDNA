@@ -1,0 +1,45 @@
+#!/bin/bash
+#SBATCH --job-name=s25_blast       # Name of Job
+#SBATCH --partition=tinymem             # Cluster to run from
+#SBATCH --output=blast_%j.stdout      # File name for standard out
+#SBATCH --error=blast_%j.stderr       # File name for standard error
+#SBATCH --cpus-per-task=12                           # Number of processors on node
+#SBATCH --mem=45G
+
+export PATH=/share/apps/CENTOS8/ohpc/software/ncbi-blast/2.17.0+/bin:$PATH
+export BLASTDB=/share/apps/CENTOS8/ohpc/software/ncbi-blast/2.17+    # update this to the directory containing nt_euk
+
+# Define directories
+SUBMIT_DIR=$SLURM_SUBMIT_DIR
+SCRATCH_DIR=/localscratch/$USER/$SLURM_JOB_ID
+
+# Create scratch directory
+mkdir -p $SCRATCH_DIR
+
+echo "Running on host: $(hostname)"
+echo "Scratch directory: $SCRATCH_DIR"
+
+# Copy query file to scratch
+cp ~/blast/sequences.fasta $SCRATCH_DIR/
+
+# Move into scratch
+cd $SCRATCH_DIR
+
+blastn \
+-query sequences.fasta \
+-task megablast \
+-db nt_euk \
+-out s25_blast.txt \
+-max_target_seqs 250 \
+-perc_identity 90 \
+-qcov_hsp_perc 95 \
+-num_threads $SLURM_CPUS_PER_TASK \
+-outfmt "6 delim=, std qlen slen staxids sscinames scomnames sgenus sfamilies sorders sskingdoms"
+
+# Copy results back to submission directory
+cp s25_blast.txt $SUBMIT_DIR/
+
+# Clean up scratch (optional but recommended)
+rm -rf $SCRATCH_DIR
+
+echo "BLAST job completed successfully."

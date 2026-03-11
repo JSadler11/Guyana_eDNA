@@ -1,0 +1,14 @@
+#!/bin/bash/
+# Configuration for the job; Changes to script only needs to be made here (ideally)
+# User Input
+data="${1:-s25_test}"				    # Dataset to be run; defaults to s25_test if no argument provided
+echo "Running pipeline on dataset: $data"
+
+# Defining directories/file paths as variable
+## Head-node[cottontail2/sharptail2] file/folder path
+data_dir="/zfshomes/jsadler/qiime_processing/$data"	# Directory/folder where you have your dataset
+tsv_file=$(basename "$data_dir"/*.tsv .tsv)			# Gets the name of the .tsv file
+
+## Cluster-node file/folder path
+node=$(hostname)
+scratch_dir="/localscratch/qiime_$data"

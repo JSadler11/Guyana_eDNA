@@ -1,0 +1,175 @@
+#!/bin/bash
+#SBATCH --job-name=full_12SV5       # Name of Job
+#SBATCH --partition=exx512             # Cluster to run from
+#SBATCH --nodes=1
+#SBATCH --output=full_12SV5.stdout      # File name for standard out
+#SBATCH --error=full_12SV5.stderr       # File name for standard error
+#SBATCH --cpus-per-task 48                           # Number of processors on node
+#SBATCH --mem 120G
+#SBATCH --time=48:00:00
+#SBATCH --exclusive                     # Ensures that all processors are on the same node
+
+set -euo pipefail
+
+scratch=$HOME/FULL/
+
+data_dir="/zfshomes/jsadler/qiime_processing/" # local directory from your cluster from with dataset and your manifest file referencing, manifest file should reference from your data directory
+
+data_folder="full_12SV5" #folder with data, located in data_dir
+# chk_file="12SV5_03052026.manifest.tsv" #to use different files, just change your manifest file name here. 
+# file_name=$(basename "$chk_file" .manifest.tsv)
+# scratch+=$data_folder
+
+cd $data_dir/$data_folder
+
+source ~/opt/miniforge3/etc/profile.d/conda.sh
+conda init &> /dev/null
+conda activate qiime2-amplicon-2025.10
+echo "Conda environment activated"
+which qiime
+
+# ------------------------------------
+# Commands to be run
+# ------------------------------------
+
+import=(qiime tools import \
+        --type "SampleData[PairedEndSequencesWithQuality]" \
+        --input-path 12SV5_03052026.manifest.tsv \
+        --output-path demux.qza \
+        --input-format PairedEndFastqManifestPhred33V2)
+
+import_summary=(qiime demux summarize \
+        --i-data demux.qza \
+        --p-n 200000 \
+        --o-visualization demux.qzv)
+# Now we will run cutadapt to trim illimina adapters, and primers in two steps
+# Here is the Illumina adapter removal
+
+illumina_adapter=(qiime cutadapt trim-paired \
+        --i-demultiplexed-sequences demux.qza \
+        --p-cores 48 \
+        --p-adapter-f TCCCTACACGACGCTCTTCCGATCTNNNNNN \
+        --p-adapter-r GTTCAGACGTGTGCTCTTCCGATCTNNNNNN \
+        --p-match-read-wildcards TRUE \
+        --p-match-adapter-wildcards TRUE \
+        --p-error-rate 0.1 \
+        --o-trimmed-sequences illumina_adapter_trimmed.qza \
+        --verbose)
+illumina_adapter_summary=(qiime demux summarize \
+        --i-data illumina_adapter_trimmed.qza \
+        --o-visualization illumina_adapter_trimmed.qzv)
+
+# Here is part one of primer trimming, removing the reverse primers
+primer_p1=(qiime cutadapt trim-paired \
+        --i-demultiplexed-sequences illumina_adapter_trimmed.qza \
+        --p-cores 48 \
+        --p-adapter-f CTAGAGGAGCCTGTTCTA \
+        --p-adapter-r GGGGTATCTAATCCCAGT \
+        --p-match-read-wildcards TRUE \
+        --p-error-rate 0.25 \
+        --o-trimmed-sequences adapter_and_primerp1.qza \
+        --verbose)
+        primer_p1_summary=(qiime demux summarize \
+        --i-data adapter_and_primerp1.qza \
+        --o-visualization adapter_and_primerp1.qzv)
+
+# Here is the final trimming step, step two of primers and step three total.
+primer_p2=(qiime cutadapt trim-paired \
+        --i-demultiplexed-sequences adapter_and_primerp1.qza \
+        --p-cores 48 \
+        --p-front-f ACTGGGATTAGATACCCC \
+        --p-front-r TAGAACAGGCTCCTCTAG \
+        --p-match-read-wildcards TRUE \
+        --p-discard-untrimmed TRUE \
+        --p-match-adapter-wildcards TRUE \
+        --o-trimmed-sequences cutadapt_12SV5_finished.qza \
+        --verbose)
+primer_p2_summary=(qiime demux summarize \
+        --i-data cutadapt_12SV5_finished.qza \
+        --o-visualization cutadapt_12SV5_finished.qzv)
+# Next is denoising and DADA2
+dada2_paired=(qiime dada2 denoise-paired \
+        --p-n-threads 48 \
+        --i-demultiplexed-seqs cutadapt_12SV5_finished.qza \
+        --p-trim-left-f 0 \
+        --p-trim-left-r 0 \
+        --p-trunc-len-f 95 \
+        --p-trunc-len-r 95 \
+        --o-table table.qza \
+        --o-representative-sequences repseqs_12SV5_full.qza \
+        --o-denoising-stats denoising_stats.qza \
+        --o-base-transition-stats base-transition-stats.qza \
+        --verbose)
+
+# Tabulate denoising stats
+denoising_stats=(qiime metadata tabulate \
+        --m-input-file denoising_stats.qza \
+        --o-visualization denoising_stats.qzv)
+
+# Tabulate representative sequences
+rep_seqs=(qiime feature-table tabulate-seqs \
+        --i-data repseqs_12SV5_full.qza \
+        --o-visualization repseqs_12SV5_full.qzv)
+
+# Summarize feature table
+feature_table=(qiime feature-table summarize \
+        --i-table table.qza \
+        --o-visualization table.qzv)
+#---------------------------------------------------
+# Set up scratch environment
+#---------------------------------------------------
+#rm -rf  "${scratch:?}"
+#mkdir -p $scratch
+#cd $data_dir
+#cp -rf $data_folder/* $scratch #copy the whole folder "full" with data from head-node (which is uploaded via sftp) and move it 
+
+#cd $scratch
+#ls $scratch
+
+#---------------------------------------------------
+# Build helper function to check progress
+#---------------------------------------------------
+
+run_command() {
+    local cmd_array=("$@")
+    local step_name=${cmd_array[0]}
+    echo "-----------------------------"
+    echo "Running step: $step_name"
+    echo "Command: ${cmd_array[@]:1}"
+    
+    "${cmd_array[@]:1}"
+    if [ $? -eq 0 ]; then
+        echo "✅ Step '$step_name' completed successfully"
+    else
+        echo "❌ Step '$step_name' FAILED at $(date)"
+        exit 1
+    fi
+}
+
+#---------------------------------------------------
+# Run pipeline commands step-wise
+#---------------------------------------------------
+
+run_command "Import sequence files" "${import[@]}"
+run_command "Import summary" "${import_summary[@]}"
+
+run_command "Trim Illumina Adapters" "${illumina_adapter[@]}"
+run_command "Adapter trim summary" "${illumina_adapter_summary[@]}"
+run_command "Part 1 of 12SV5 Trim" "${primer_p1[@]}"
+run_command "Part 1 12SV5 Trim Summary" "${primer_p1_summary[@]}"
+run_command "Part 2 of 12SV5 Trim" "${primer_p2[@]}"
+run_command "Part 2 12SV5 Trim Summary" "${primer_p2_summary[@]}"
+
+run_command "DADA2 Denoise Paired" "${dada2_paired[@]}"
+run_command "Denoising Statistics" "${denoising_stats[@]}"
+run_command "Representative Sequences" "${rep_seqs[@]}"
+run_command "Feature Table" "${feature_table[@]}"
+
+#---------------------------------------------------
+# Make a copy of scratch directory for results
+#---------------------------------------------------
+
+# mkdir -p $data_dir/results_12SV5_full
+# cp -rf $scratch/* $data_dir/results_12SV5_full/
+
+echo "Pipeline completed successfully at $(date)!!!"

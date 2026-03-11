@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --job-name=qiime_test           # Name of Job
+#SBATCH --partition=tinymem             # Cluster to run from
+#SBATCH --output=qiime_test.stdout      # File name for standard out
+#SBATCH --error=qiime_test.stderr       # File name for standard error
+#SBATCH -n 48                           # Number of processors on node
+#SBATCH --mem 20G
+#SBATCH --exclusive                     # Ensures that all processors are on the same node
+
+scratch="/localscratch/qiime/"
+
+data_dir="/zfshomes/jsadler/qiime_processing/" # local directory from your cluster from with dataset and your manifest file referencing, manifest file should reference from your data directory
+
+data_folder="s25_test" #folder with data, located in data_dir
+chk_file="s25_test.manifest.tsv" #to use different files, just change your manifest file name here. 
+file_name=$(basename "$chk_file" .manifest.tsv)
+scratch+=$data_folder
+
+#we are activate the conda environment with qimme
+conda init &> /dev/null
+conda activate qiime2-amplicon-2025.10
+
+
+# Commands to be run
+import=(qiime tools import \
+        --type "SampleData[PairedEndSequencesWithQuality]" \
+        --input-path s25_test.manifest.tsv \
+        --output-path demux.qza \
+        --input-format PairedEndFastqManifestPhred33V2)
+
+import_summary="qiime demux summarize \
+--i-data demux.qza \
+--p-n 200000 \
+--o-visualization demux.qzv"
+
+rm -rf  $scratch
+mkdir -p $scratch
+cd $data_dir
+cp -rf $data_folder/* $scratch #copy the whole folder "full" with data from head-node (which is uploaded via sftp) and move it 
+
+cd $scratch
+ls $scratch
+export OMP_NUM_THREADS=40
+
+${import[@]}
+
+if [ $? -eq 0 ]; then
+        echo "Successfully ran command :: ${import[@]}";
+        $import_summar
+
+:
