@@ -102,6 +102,32 @@ Next, you can filter your feature data. First, remove any ASVs that only occur o
 ```
 qiime feature-table filter-features \
 ```
+
+## QZA Conversions in QIIME
+
+We will need to convert the qza repseq and table output files to fasta (a type of text file) and tsv files for work in R. We will run the first steps in QIIME2 using the export feature, and also with biomformat in R. You can technically do this all in R, but I like using QIIME because there are fewer points to screw everything up. I'm looking at you row alignment.
+
+```
+qiime tools export \
+--input-path repseqs.qza
+--output-path repseqs
+```
+If you're running the repseqs file, you'll be able to import into R and convert (coming shortly below). Repeat with your table file. You should get a table.biom file. Move that down to the next step for biom conversion. 
+
+```
+biom convert \
+-i table.biom \
+-o table.tsv \
+--to-tsv
+```
+For running biomformat in R, use the following to convert from biom to tsv. This is optional to the above conversion. 
+
+```
+library(biomformat)
+biom_obj<-read_biom("table.biom")
+asv_table<-as(biom_data(biom_obj), "matrix")
+```
+
 ## FastQC
 
 Before we go any further, here is how I ran my FastQC analyses. In the command line, run:
