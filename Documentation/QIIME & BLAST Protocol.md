@@ -110,7 +110,7 @@ We will need to convert the qza repseq and table output files to fasta (a type o
 ```
 qiime tools export \
 --input-path repseqs.qza \
---output-path repseqs
+--output-path repseqs.txt
 ```
 If you're running the repseqs file, you'll be able to import into R and convert (coming shortly below). Repeat with your table file. You should get a table.biom file. Move that down to the next step for biom conversion. 
 
