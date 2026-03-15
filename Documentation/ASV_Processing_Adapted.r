@@ -1,3 +1,17 @@
+# =============================================================================
+# SECTION 1: LIBRARIES
+# Load all packages required for the full analysis pipeline.
+# Core wrangling: tidyverse (dplyr, ggplot2, tidyr), readr, data.table, scales.
+# Community ecology: vegan (diversity indices, NMDS, PERMANOVA, CCA),
+#   cluster, pairwiseAdonis (post-hoc pairwise PERMANOVA).
+# Modelling: mgcv (Generalised Additive Models for alpha-diversity responses).
+# Visualisation: plotly (interactive ggplot widgets), corrmorant
+#   (pairwise covariate correlation matrices).
+# Additional packages loaded mid-script: microDecon (blank-based
+#   decontamination), betapart (beta-diversity partitioning), ggpubr
+#   (multi-panel figure assembly), gam/mixOmics (GAMs and sparse PLS).
+# =============================================================================
+
 library(tidyverse)
 library(RColorBrewer)
 library(biomformat)
@@ -5,6 +19,11 @@ library(readr)
 library(data.table)
 library(vegan)
 library(plotly)
+library(cluster)
+library(pairwiseAdonis)
+library(corrmorant)
+library(scales)
+library(mgcv)
 library(ggpubr)
 library(effectsize)
 library(see)
@@ -17,7 +36,7 @@ library(gratia)
 setwd("/Users/jacksadler/Desktop/project_thesis/taxonomy/12SV5_BLAST/Full_Outputs")
 
 #________________________________________________________
-# STREAM 1: ASV SEQUENCE LENGTH FILTERING → BLAST INPUT
+# SECTION 2: ASV SEQUENCE LENGTH FILTERING → BLAST INPUT
 # Reads repseqs FASTA, filters to valid 12SV5 amplicon lengths,
 # exports length-filtered FASTA for BLAST on the cluster.
 # NOTE: This stream is independent of Stream 2 below.
@@ -83,40 +102,35 @@ write.csv(repseqs_12SV5_length_min,"R_outputs/full_12SV5_length_filtered_repseqs
 
 # INSERT HERE Sophie's Classifier. May need to install on cluster in new conda
 #________________________________________________________
-# STREAM 2: SAMPLE ABUNDANCE FILTERING FROM table.qza
+# SECTION 3: SAMPLE ABUNDANCE FILTERING FROM table.qza
 # Reads QIIME2 artifact, extracts BIOM abundance table,
 # drops low-depth samples (<1,000 reads).
 # NOTE: This stream is independent of Stream 1 above.
 # The two streams converge downstream when BLAST output is
-# merged back with the abundance table.
-#________________________________________________________
+# merged back with the abundance table. Extract and read table.qza
+# is an alternative way to get your FASTA data if need be, 
+# without having to rely on QIIME2 View----HOWEVER, here I am using a 
+# tsv file that was converted in qiime itself and with biom to a tsv. 
+# I'm much comfier with this approach.
 
-# ---- Extract and read table.qza This is an alternative way to get your FASTA data if need be, without having to rely on QIIME2 View----
-# -------HOWEVER, here I am using a tsv file that was converted in qiime itself and with biom to a tsv. I'm much comfier with this approach.
 #qza_path <- "qza_conversion_s25_test/s25_table.tsv"
 #tmp_dir <- tempdir()
-
 #unzip(qza_path, exdir = tmp_dir)
-
 # Find the BIOM file inside
 #biom_path <- list.files(tmp_dir, pattern = "\\.biom$", 
                      #   recursive = TRUE, full.names = TRUE)[1]
-
 # Read and convert to matrix
 #biom_data <- read_biom(biom_path)
 #seqtab_12SV5 <- as.data.frame(as.matrix(biom_data(biom_data)))
-
 # BIOM format is ASVs as rows, samples as columns — transpose to match your original format
 #seqtab_12SV5 <- t(seqtab_12SV5)
-
 # Make it a proper data frame with sample names retained
 #seqtab_12SV5 <- as.data.frame(seqtab_12SV5)
-
 # Load the DADA2 ASV abundance table (samples as rows, sequences as columns)
 
 seqtab_12SV5 <- table_full
 
-# We want our sequences become rows and samples to become columns, then tidy rownames. 
+# We want our sequences to become rows and samples to become columns, then tidy rownames. 
 # My samples are already in this format, and so I don't need to run things this way:
 # seqtab_12SV5_transpose<-t(seqtab_12SV5)
 # seqtab_12SV5_transpose<-as.data.frame(seqtab_12SV5_transpose) 
@@ -137,15 +151,12 @@ seqtab_12SV5[ , i] <- apply(seqtab_12SV5[ , i], 2, function(x) as.numeric(as.cha
 # Identify and drop samples with fewer than 1,000 total reads (too shallow for 
 # reliable community estimation)
 # I'm not gonna do this for now. 
-
 # rarefy_col_sum<-colSums(seqtab_12SV5_transpose[c(2:10)])
 # rarefy_col_sum<-data.frame(rarefy_col_sum)
 # rarefy_col_sum<-setDT(rarefy_col_sum, keep.rownames = TRUE)[]
 # rarefy_col_sum<-data.frame(rarefy_col_sum)
-
 # rarefy_col_sum<-rarefy_col_sum[!(rarefy_col_sum$rarefy_col_sum>=1000),]
 # drop<-rarefy_col_sum$rn
-
 # seqtab_12SV5_transpose<-seqtab_12SV5_transpose[,!(names(seqtab_12SV5_transpose) %in% drop)]
 
 #-------------------------------------------------------------------------
@@ -227,9 +238,18 @@ best_hits_12SV5 <- filtered_12SV5 %>%
   slice_min(evalue, n = 5, with_ties = TRUE)
 
 #-----------END JACK'S EARLY PIPELINE----------------------------------------
-
+#---------------------------------------------------------------------------
+# SECTION 4: SEQTAB IMPORT AND CLEANING
 # Join BLAST taxonomy onto the abundance table, using the raw sequence string as the key;
 # this replaces literal sequences with species assignments
+# Row names (ASV sequences) are moved into a column called 'Seq' so the
+# data frame can be manipulated without relying on implicit row names.
+# Stray quotation marks from file export are stripped via gsub().
+# A helper function (header.true) promotes the first row of a data frame
+# to column names and drops it; this pattern recurs throughout the script
+# wherever a transpose leaves the header in row 1.
+#-------------------------------------------------------------------------------
+      
 seqtab_12SV5_tax <- best_hits_12SV5 %>% full_join(seqtab_12SV5, by = "fasta_id")
 seqtab_12SV5_tax$rn <- NULL
 seqtab_12SV5_tax$sseqid <- NULL
@@ -253,6 +273,26 @@ seqtab_12SV5_tax_col_sum<- seqtab_12SV5_tax_col_sum %>% rownames_to_column("ID")
 # Remove ASVs with no BLAST species assignment, but we don't want to do this
 # seqtab_12SV5_tax<-seqtab_12SV5_tax %>% drop_na(sscinames)
 
+# =============================================================================
+# SECTION 5: LONG FORMAT, METADATA JOIN & READ-DEPTH TRACKING PLOT
+# The wide ASV table (rows=ASVs, cols=samples) is pivoted to long format
+# (one row per ASV x sample observation) using tidyr::gather(). This format
+# is required for ggplot2 stacked bar charts and for applying the per-sample
+# read threshold row-by-row.
+# Sample metadata (site codes, dates, seasons, env. covariates) is read in
+# and joined. A corrmorant pairwise correlation matrix is generated for the
+# WP2A environmental covariates to identify collinear predictors before
+# building PERMANOVA and GAM models.
+# The 0.05% read threshold is joined and applied: any ASV-sample
+# row where reads <= threshold is removed.
+# The filtered long table is written to disk as a checkpoint, then converted
+# back to wide format for normalisation.
+# A read-depth tracking plot is generated showing reads retained at each
+# of the filter stages,
+# faceted by sample with bars coloured by filter step.
+# =============================================================================
+#CONVERTING ASV TABLE INTO LONG FORMAT
+
 # Reshape to long format (one row per ASV × sample combination) for filtering and metadata merging
 seqtab_12SV5_tax_long <- seqtab_12SV5_tax %>%
   pivot_longer(
@@ -274,8 +314,6 @@ metadata_summary <- metadata_full %>%
 
 full_metadata_summary<-data.frame(metadata_summary)
 write.csv(full_metadata_summary,"metadata_summary.csv")
-
-# Noticing something wrong here. 
 
 metadata_full<-metadata_full %>% rename(sample_id = sample.id)
 seqtab_12SV5_tax_long<-seqtab_12SV5_tax_long %>% rename(sample_id = Sample)
@@ -324,9 +362,13 @@ seqtab_12SV5_tax_col_sum2<-data.frame(seqtab_12SV5_tax_col_sum2)
 seqtab_12SV5_tax_col_sum2$sample_id <- rownames(seqtab_12SV5_tax_col_sum2)
 
 seqtab_12SV5_tax_normalised<- merge(seqtab_12SV5_tax_col_sum2[, c("sample_id", "seqtab_12SV5_tax_col_sum2")],seqtab_12SV5_tax_long_meta_clean_filtered, by="sample_id")
-
+     
 seqtab_12SV5_tax_normalised <- transform(seqtab_12SV5_tax_normalised, normalised_reads = reads / seqtab_12SV5_tax_col_sum2)
 
+ggplot(seqtab_12SV5_tax_normalised , aes(x = sequence_id, fill = species, y = normalised_reads)) + 
+  geom_bar(stat = "identity", colour = "black")+
+  theme(axis.text.x = element_text(angle = 90))+ theme(legend.position = "none")
+                                      
 #################################################################################
 ####### COMMUNITY COMP CHECK ###################################################
 ###############################################################################
@@ -350,6 +392,16 @@ ggplot(seqtab_12SV5_tax_normalised , aes(x = sample_id, fill = species_plot, y =
 
 ####################################################################################################
 
+#COVARIATES IN METADATA PLOT FOR WP2A
+library(corrmorant)
+lofresh_metadata_WP2A<-lofresh_metadata_WP2_3 %>% filter(WP == "WP2A")
+lofresh_metadata_WP2A<-lofresh_metadata_WP2A %>%
+  select("season","Days","Dist_from_lake","pH",
+"conductivity_uS_cm","gran_alk_ueq_L","daily_flow_by_catchment","monthly_flow_by_catchment","seasonal_flow_by_catchment",
+"week_before_flow_by_catchment","river_width_m","river_gradient_percent","rainfall_monthly_average",
+"temp_monthly_average")
+corrmorant(lofresh_metadata_WP2A, style = "blue_red")
+                                           
 # Pivot normalised data to wide format and save as the master normalised community matrix
 seqtab_12SV5_tax_normalised_wide<-seqtab_12SV5_tax_normalised
 seqtab_12SV5_tax_normalised_wide$read_filter <- NULL 
@@ -400,8 +452,16 @@ guyana_long <- guyana_long %>%
   select(-ends_with(".y"), -`...1`) %>%
   rename_with(~ sub("\\.x$", "", .), ends_with(".x"))
 
-
-###   Splitting work packages and adding metadata ###
+# =============================================================================
+# WORK PACKAGE SPLITTING
+# The full filtered long dataset is divided into sub-datasets by work package
+# and for Mawrow Creek, further by geographic region / river
+# region. Each sub-dataset has the same set of metadata columns  attached via
+# sequential merge calls, then saved as a standalone CSV file.
+# These per-village CSVs are the starting point for all downstream analyses
+# onwards.
+# =============================================================================
+                                             
 guyana_edna_long_meta_clean <- read_csv("FULL_ASV_table_wide_filtered.csv")
 
 # Surama
@@ -465,7 +525,65 @@ guyana_Whitewater <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
 write.csv(guyana_Whitewater, "Whitewater_ASV_table_long_filtered.csv", row.names = FALSE)
 guyana_Whitewater <- read_csv("Whitewater_ASV_table_long_filtered.csv")
 
+# Mawrow Creek Upper, Middle, and Lower regions
+
+# Village regions and Rainy vs Dry Season
+                                             
 #=============================================================================================================================
+# ANALYSIS -- DECONTAMINATION, ABUNDANCE PLOTS, NORMALISATION & PHYLUM-LEVEL COMPOSITION
+#
+# This section re-loads the 12SV5 filtered CSV and applies the following
+# workflow, which is subsequently repeated for each region in the study area:
+#
+#  a) Aggregate technical replicates by taking the mean read count per
+#     species x site-time combination (not sum, because replicates measure
+#     the same community).
+#
+#  b) Plot a proportional stacked bar chart (position='fill') as a first
+#     look at relative amplicon frequency across sites.
+#
+#  c) Convert to wide format, then run microDecon::decon() for blank-based
+#     statistical decontamination. Blank samples are relocated to the front
+#     of the table (required by decon()). The function statistically
+#     identifies taxa whose abundance pattern mirrors the field/extraction
+#     blanks and subtracts them. The number of blanks (numb.blanks=##)
+#     and sample counts per event (numb.ind) must match the study design.
+#     Samples that end up with zero reads post-decontamination are dropped.
+#
+#  d) Convert the decontaminated wide table back to long format.
+#
+#  e) Rarefaction curve code (commented out) is retained for reference.
+#     Venn diagram code (commented out) would show ASV overlap by river
+#     section and season using VennDiagram/eulerr.
+#
+#  f) Normalise reads to relative abundance.
+#     Column sums (per-ASV totals across all samples) are also computed
+#     for use in the 'top taxa' ranking plots.
+#
+#  g) Generate phylum-level composition plots by splitting the semicolon-
+#     delimited taxonomy string into separate columns. Reads are aggregated to phylum level
+#     and plotted as proportional stacked bars, faceted by site.
+#     A fixed factor order and manual colour palette ensure consistency
+#     across all river plots. Minor phyla are rendered in white.
+#
+#  h) Export the normalised wide table as NORM_12SV5_ASV_table_wide_filtered.csv
+#     -- the direct input to all PERMANOVA, NMDS, CCA, and alpha-diversity
+#     analyses in later sections.
+#=======================================================================================
+
+library(tidyverse)
+library(readr)
+library(data.table)
+library(vegan)
+library(plotly)
+library(microDecon)
+library(gam)
+#library(mgcv)
+                                             
+
+
+
+
 # Convert QIIME FASTA to txt
 header_idx <- grep("^>", lines)
 headers <- sub("^>", "", lines[header_idx])  # remove the ">" prefix
