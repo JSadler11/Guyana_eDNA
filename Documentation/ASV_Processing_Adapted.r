@@ -528,62 +528,7 @@ guyana_Whitewater <- read_csv("Whitewater_ASV_table_long_filtered.csv")
 # Mawrow Creek Upper, Middle, and Lower regions
 
 # Village regions and Rainy vs Dry Season
-                                             
-#=============================================================================================================================
-# ANALYSIS -- DECONTAMINATION, ABUNDANCE PLOTS, NORMALISATION & PHYLUM-LEVEL COMPOSITION
-#
-# This section re-loads the 12SV5 filtered CSV and applies the following
-# workflow, which is subsequently repeated for each region in the study area:
-#
-#  a) Aggregate technical replicates by taking the mean read count per
-#     species x site-time combination (not sum, because replicates measure
-#     the same community).
-#
-#  b) Plot a proportional stacked bar chart (position='fill') as a first
-#     look at relative amplicon frequency across sites.
-#
-#  c) Convert to wide format, then run microDecon::decon() for blank-based
-#     statistical decontamination. Blank samples are relocated to the front
-#     of the table (required by decon()). The function statistically
-#     identifies taxa whose abundance pattern mirrors the field/extraction
-#     blanks and subtracts them. The number of blanks (numb.blanks=##)
-#     and sample counts per event (numb.ind) must match the study design.
-#     Samples that end up with zero reads post-decontamination are dropped.
-#
-#  d) Convert the decontaminated wide table back to long format.
-#
-#  e) Rarefaction curve code (commented out) is retained for reference.
-#     Venn diagram code (commented out) would show ASV overlap by river
-#     section and season using VennDiagram/eulerr.
-#
-#  f) Normalise reads to relative abundance.
-#     Column sums (per-ASV totals across all samples) are also computed
-#     for use in the 'top taxa' ranking plots.
-#
-#  g) Generate phylum-level composition plots by splitting the semicolon-
-#     delimited taxonomy string into separate columns. Reads are aggregated to phylum level
-#     and plotted as proportional stacked bars, faceted by site.
-#     A fixed factor order and manual colour palette ensure consistency
-#     across all river plots. Minor phyla are rendered in white.
-#
-#  h) Export the normalised wide table as NORM_12SV5_ASV_table_wide_filtered.csv
-#     -- the direct input to all PERMANOVA, NMDS, CCA, and alpha-diversity
-#     analyses in later sections.
-#=======================================================================================
-
-library(tidyverse)
-library(readr)
-library(data.table)
-library(vegan)
-library(plotly)
-library(microDecon)
-library(gam)
-#library(mgcv)
-                                             
-
-
-
-
+                        
 # Convert QIIME FASTA to txt
 header_idx <- grep("^>", lines)
 headers <- sub("^>", "", lines[header_idx])  # remove the ">" prefix
