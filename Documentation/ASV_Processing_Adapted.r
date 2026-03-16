@@ -473,85 +473,42 @@ guyana_long <- guyana_long %>%
                                              
 guyana_edna_long_meta_clean <- read_csv("FULL_ASV_table_wide_filtered.csv")
 
+
 # Surama
 guyana_Surama <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
-  filter(Village == "Surama", Month.Collected == "April") %>%
-  merge(metadata_full[, c("sample_id", "Control")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "SubLocation")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "pH")], by = "sample_id") %>%                                             
-  merge(metadata_full[, c("sample_id", "Temp")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "EC")], by = "sample_id") %>%  
-  merge(metadata_full[, c("sample_id", "Liters_Pumped")], by = "sample_id") %>%                                           
-  merge(metadata_full[, c("sample_id", "GPS.Location")], by = "sample_id")
-write.csv(guyana_Surama_April, "Surama_ASV_table_long_filtered.csv", row.names = FALSE)
-guyana_Surama_April <- read_csv("Surama_ASV_table_long_filtered.csv")
+  filter(Village == "Surama")
+write.csv(guyana_Surama, "R_outputs/Surama_ASV_table_long_filtered.csv", row.names = FALSE)
+guyana_Surama <- read_csv("R_Outputs/Surama_ASV_table_long_filtered.csv")
 
 # Kamwatta
-guyana_Kamwatta_April <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
-  filter(Village == "Kamwatta", Month.Collected == "April") %>%
-  merge(metadata_full[, c("sample_id", "Control")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "SubLocation")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "pH")], by = "sample_id") %>%                                             
-  merge(metadata_full[, c("sample_id", "Temp")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "EC")], by = "sample_id") %>%  
-  merge(metadata_full[, c("sample_id", "Liters_Pumped")], by = "sample_id") %>%                                           
-  merge(metadata_full[, c("sample_id", "GPS.Location")], by = "sample_id")
-write.csv(guyana_Kamwatta_April, "Kamwatta_April_ASV_table_long_filtered.csv", row.names = FALSE)
-guyana_Kamwatta_April <- read_csv("Kamwatta_April_ASV_table_long_filtered.csv")
+guyana_Kamwatta <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
+  filter(Village == "Kamwatta")
+write.csv(guyana_Kamwatta, "R_outputs/Kamwatta_ASV_table_long_filtered.csv", row.names = FALSE)
+guyana_Kamwatta <- read_csv("R_outputs/Kamwatta_ASV_table_long_filtered.csv")
 
 # Mainstay
 guyana_Mainstay <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
-  filter(Village == "Mainstay", Month.Collected == "April") %>%
-  merge(metadata_full[, c("sample_id", "Control")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "SubLocation")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "pH")], by = "sample_id") %>%                                             
-  merge(metadata_full[, c("sample_id", "Temp")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "EC")], by = "sample_id") %>%  
-  merge(metadata_full[, c("sample_id", "Liters_Pumped")], by = "sample_id") %>%                                           
-  merge(metadata_full[, c("sample_id", "GPS.Location")], by = "sample_id")
-write.csv(guyana_Mainstay, "Mainstay_April_ASV_table_long_filtered.csv", row.names = FALSE)
-guyana_Mainstay <- read_csv("Mainstay_April_ASV_table_long_filtered.csv")                                           
+  filter(Village == "Mainstay")
+write.csv(guyana_Mainstay, "R_outputs/Mainstay_ASV_table_long_filtered.csv", row.names = FALSE)
+guyana_Mainstay <- read_csv("Mainstay_ASV_table_long_filtered.csv")
 
-# Wowetta Rainy & Dry
+# Wowetta
 guyana_Wowetta <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
-  filter(Village == "Wowetta") %>%
-  merge(metadata_full[, c("sample_id", "Control")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "SubLocation")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "pH")], by = "sample_id") %>%                                             
-  merge(metadata_full[, c("sample_id", "Temp")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "EC")], by = "sample_id") %>%  
-  merge(metadata_full[, c("sample_id", "Liters_Pumped")], by = "sample_id") %>%                                           
-  merge(metadata_full[, c("sample_id", "GPS.Location")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "Month.Collected")], by = "sample_id")                                           
-write.csv(guyana_Wowetta, "Wowetta_RainPlusDry_ASV_table_long_filtered.csv", row.names = FALSE)
-guyana_Wowetta <- read_csv("Wowetta_RainPlusDry_ASV_table_long_filtered.csv")
+  filter(Village == "Wowetta")
+write.csv(guyana_Wowetta, "R_outputs/Wowetta_ASV_table_long_filtered.csv", row.names = FALSE)
+guyana_Wowetta <- read_csv("R_outputs/Wowetta_ASV_table_long_filtered.csv")
 
 # MowrowCreek
 guyana_MowrowCreek <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
-  filter(Village == "MowrowCreek", Month.Collected == "July") %>%
-  merge(metadata_full[, c("sample_id", "Control")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "SubLocation")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "pH")], by = "sample_id") %>%                                             
-  merge(metadata_full[, c("sample_id", "Temp")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "EC")], by = "sample_id") %>%  
-  merge(metadata_full[, c("sample_id", "Liters_Pumped")], by = "sample_id") %>%                                           
-  merge(metadata_full[, c("sample_id", "GPS.Location")], by = "sample_id")
-write.csv(guyana_MowrowCreek, "MowrowCreek_July_ASV_table_long_filtered.csv", row.names = FALSE)
-guyana_MowrowCreek <- read_csv("MowrowCreek_July_ASV_table_long_filtered.csv")
-
+  filter(Village == "MowrowCreek")
+write.csv(guyana_MowrowCreek, "R_outputs/MowrowCreek_ASV_table_long_filtered.csv", row.names = FALSE)
+guyana_MowrowCreek <- read_csv("R_outputs/MowrowCreek_ASV_table_long_filtered.csv")
 
 # Whitewater
 guyana_Whitewater <- seqtab_12SV5_tax_long_meta_clean_filtered %>%
-  filter(Village == "Whitewater", Month.Collected == "April") %>%
-  merge(metadata_full[, c("sample_id", "Control")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "SubLocation")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "pH")], by = "sample_id") %>%                                             
-  merge(metadata_full[, c("sample_id", "Temp")], by = "sample_id") %>%
-  merge(metadata_full[, c("sample_id", "EC")], by = "sample_id") %>%  
-  merge(metadata_full[, c("sample_id", "Liters_Pumped")], by = "sample_id") %>%                                           
-  merge(metadata_full[, c("sample_id", "GPS.Location")], by = "sample_id")
-write.csv(guyana_Whitewater, "Whitewater_April_ASV_table_long_filtered.csv", row.names = FALSE)
-guyana_Whitewater <- read_csv("Whitewater_April_ASV_table_long_filtered.csv")
+  filter(Village == "Whitewater")
+write.csv(guyana_Whitewater, "R_outputs/Whitewater_ASV_table_long_filtered.csv", row.names = FALSE)
+guyana_Whitewater <- read_csv("R_outputs/Whitewater_ASV_table_long_filtered.csv")
 
 # Mawrow Creek Upper, Middle, and Lower regions can be accounted for in with the SubRegions variable in the Metadata
 
