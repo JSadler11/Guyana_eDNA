@@ -1,4 +1,3 @@
-
 # =============================================================================
 # ANALYSIS -- DECONTAMINATION, ABUNDANCE PLOTS,
 #             NORMALISATION & PHYLUM-LEVEL COMPOSITION
@@ -53,104 +52,142 @@ library(vegan)
 library(plotly)
 library(microDecon)
 library(gam)
-#library(mgcv)
 
 setwd("~project_thesis/blast/12SV5_BLAST/Full_Outputs")
-seqtab_VILLAGE_12SV5_tax_long_meta_clean_filtered <- read_csv("VILLAGE_ASV_table_long_filtered.csv")
+seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered <- read_csv("R_outputs/Wowetta_ASV_table_long_filtered.csv")
+seqtab_Surama_12SV5_tax_long_meta_clean_filtered <- read_csv("R_outputs/Surama_ASV_table_long_filtered.csv")
+seqtab_Mainstay_12SV5_tax_long_meta_clean_filtered <- read_csv("R_outputs/Mainstay_ASV_table_long_filtered.csv")
+seqtab_Whitewater_12SV5_tax_long_meta_clean_filtered <- read_csv("R_outputs/Whitewater_ASV_table_long_filtered.csv")
+seqtab_MowrowCreek_12SV5_tax_long_meta_clean_filtered <- read_csv("R_outputs/MowrowCreek_ASV_table_long_filtered.csv")
+
+#filter by season of collection
+seqtab_Wowetta_Dry_12SV5_tax_long_meta_clean_filtered<-seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>%
+  filter(Month.Collected == "April")
+
+seqtab_Wowetta_Rainy_12SV5_tax_long_meta_clean_filtered<-seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>%
+  filter(Month.Collected == "July")
 
 #aggregating replicates
-seqtab_VILLAGE_12SV5_tax_long_meta_clean_filtered<-seqtab_VILLAGE_12SV5_tax_long_meta_clean_filtered %>% 
-  group_by(SubLocation,sscinames) %>% 
+seqtab_Wowetta_Dry_12SV5_tax_long_meta_clean_filtered<-seqtab_Wowetta_Dry_12SV5_tax_long_meta_clean_filtered %>% 
+  group_by(SubLocation,sscinames,Control.,sample_id,fasta_id) %>% 
   summarize(reads=mean(reads)) %>%
-  rename(Sublocation=SampleSite,sscinames=sscinames, reads=reads)
+  rename(SubLocation=SubLocation,sscinames=sscinames,reads=reads)
+
+seqtab_Wowetta_Rainy_12SV5_tax_long_meta_clean_filtered<-seqtab_Wowetta_Rainy_12SV5_tax_long_meta_clean_filtered %>% 
+  group_by(SubLocation,sscinames,Control.,sample_id,fasta_id) %>% 
+  summarize(reads=mean(reads)) %>%
+  rename(SubLocation=SubLocation,sscinames=sscinames, reads=reads)
 
 #RELATIVE AMPLICON FREQUENCY ABUNDANCE
-ggplot(seqtab_VILLAGE_12SV5_tax_long_meta_clean_filtered, aes(x = Sublocation, fill = sscinames, y = reads)) + 
-  geom_bar(position="fill",stat = "identity", colour = "black")+
-  theme(axis.text.x = element_text(angle = 90),legend.position = "none")
+ggplot(seqtab_Wowetta_Dry_12SV5_tax_long_meta_clean_filtered, aes(x = SubLocation, fill = sscinames, y = reads)) + 
+  geom_bar(position="fill",stat = "identity", colour = "white")+
+  theme(axis.text.x = element_text(angle = 90),legend.position = "none",
+  legend.text = element_text(face = "italic", size = 9))
+
+ggplot(seqtab_Wowetta_Rainy_12SV5_tax_long_meta_clean_filtered, aes(x = SubLocation, fill = sscinames, y = reads)) + 
+  geom_bar(position="fill",stat = "identity", colour = "white")+
+  theme(axis.text.x = element_text(angle = 90),legend.position = "none",
+        legend.text = element_text(face = "italic", size = 9))
 
 #CONVERTING FILTERED LONG FORMAT INTO WIDE FORMAT
-seqtab_VILLAGE_12SV5_tax_wide_filtered<-seqtab_VILLAGE_12SV5_tax_long_meta_clean_filtered
-seqtab_12SV5_tax_wide_filtered$read_filter <- NULL 
-seqtab_12SV5_tax_wide_filtered$Days <- NULL 
-seqtab_12SV5_tax_wide_filtered$Date_sampled <- NULL 
-seqtab_12SV5_tax_wide_filtered$SampleSite_code <- NULL 
-seqtab_12SV5_tax_wide_filtered$WP <- NULL 
-seqtab_12SV5_tax_wide_filtered$Seq_length <- NULL 
 
-seqtab_12SV5_tax_wide_filtered<-seqtab_12SV5_tax_wide_filtered %>% 
-  group_by(SampleSite_time,species) %>% 
-  summarize(reads=sum(reads)) %>%
-  rename(SampleSite_time=SampleSite_time,species=species, reads= reads,)
+seqtab_Wowetta_12SV5_tax_wide_filtered <- seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>%
+  group_by(sample_id, fasta_id, sscinames, SubLocation, Control.) %>%
+  summarize(reads = sum(reads), .groups = "drop") %>%
+  spread(key = sample_id, value = reads, fill = 0)
 
-seqtab_12SV5_tax_wide_filtered <- spread(seqtab_12SV5_tax_wide_filtered,SampleSite_time,reads)
-seqtab_12SV5_tax_wide_filtered[is.na(seqtab_12SV5_tax_wide_filtered)] <- 0
-seqtab_12SV5_tax_wide_filtered <- data.frame(t(seqtab_12SV5_tax_wide_filtered))
+seqtab_Wowetta_12SV5_tax_wide_filtered[] <- lapply(seqtab_Wowetta_12SV5_tax_wide_filtered, function(x) type.convert(as.character(x)))
 
-names(seqtab_12SV5_tax_wide_filtered) <- as.matrix(seqtab_12SV5_tax_wide_filtered[1, ])
-seqtab_12SV5_tax_wide_filtered <- seqtab_12SV5_tax_wide_filtered[-1, ]
-seqtab_12SV5_tax_wide_filtered[] <- lapply(seqtab_12SV5_tax_wide_filtered, function(x) type.convert(as.character(x)))
+# FILTERING BY NEGATIVE CONTROL
+control_samples_WD <- seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>% 
+  filter(Control. == "Y", Month.Collected == "April") %>% 
+  distinct(sample_id) %>%
+  pull(sample_id)
 
-#FILTERING BY NEGATIVE CONTROL
-seqtab_12SV5_tax_wide_filtered<-t(seqtab_12SV5_tax_wide_filtered)
-seqtab_12SV5_tax_wide_filtered<-data.frame(seqtab_12SV5_tax_wide_filtered)
-seqtab_12SV5_tax_wide_filtered<-setDT(seqtab_12SV5_tax_wide_filtered, keep.rownames = TRUE)[]
-seqtab_12SV5_tax_wide_filtered<-seqtab_12SV5_tax_wide_filtered %>% rename(OTU_ID = rn)
+real_samples_WD <- seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>%
+  filter(Control. == "N", Month.Collected == "April") %>%
+  distinct(sample_id) %>%
+  pull(sample_id)
 
-colnames_decon<-colnames(seqtab_12SV5_tax_wide_filtered)
-colnames_decon<-data.frame(colnames_decon)
+control_samples_WR <- seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>% 
+  filter(Control. == "Y", Month.Collected == "July") %>% 
+  distinct(sample_id) %>%
+  pull(sample_id)
 
-seqtab_12SV5_tax_wide_filtered_DECON<-seqtab_12SV5_tax_wide_filtered %>% relocate("OTU_ID","EBlank_T02",
-                "EBlank_T14","ENC_T03","ENC_T04","ENC_T05","ENC_T07","ENC_T08","ENC_T09","ENC_T10","ENC_T11","ENC_T12",
-                "ENC_T13","ENC_T17", "ENC_T18","ENC_T19")
-                
-colnames_decon<-colnames(seqtab_12SV5_tax_wide_filtered_DECON)
-                
-decontaminated <- decon(data = seqtab_12SV5_tax_wide_filtered_DECON,numb.blanks=15,numb.ind=c(17,#E01
-                                                                                                    15,#E02
-                                                                                                    16,#E03
-                                                                                                    18,#E04
-                                                                                                    18,#E05
-                                                                                                    18,#E06
-                                                                                                    18,#E07
-                                                                                                    18,#E08
-                                                                                                    18,#E09
-                                                                                                    18,#E10
-                                                                                                    18,#E11
-                                                                                                    18,#E12
-                                                                                                    18,#E13
-                                                                                                    18#E14
-                                                                                                    ),taxa=F)
-reads_removed<-decontaminated$reads.removed
+real_samples_WR <- seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>%
+  filter(Control. == "N", Month.Collected == "July") %>%
+  distinct(sample_id) %>%
+  pull(sample_id)
 
+# Season-specific DECON tables
+seqtab_Wowetta_12SV5_tax_wide_filtered_DECON_WD <- seqtab_Wowetta_12SV5_tax_wide_filtered %>%
+  select(-sscinames, -SubLocation, -Control.) %>%
+  select(fasta_id, all_of(control_samples_WD), all_of(real_samples_WD)) %>%
+  relocate(fasta_id, all_of(control_samples_WD))
 
+seqtab_Wowetta_12SV5_tax_wide_filtered_DECON_WR <- seqtab_Wowetta_12SV5_tax_wide_filtered %>%
+  select(-sscinames, -SubLocation, -Control.) %>%
+  select(fasta_id, all_of(control_samples_WR), all_of(real_samples_WR)) %>%
+  relocate(fasta_id, all_of(control_samples_WR))
 
-seqtab_12SV5_tax_wide_filtered<-decontaminated$decon.table
-seqtab_12SV5_tax_wide_filtered$Mean.blank<-NULL
-seqtab_12SV5_tax_wide_filtered<-t(seqtab_12SV5_tax_wide_filtered)
-seqtab_12SV5_tax_wide_filtered<-data.frame(seqtab_12SV5_tax_wide_filtered)
+# Decontam dry season
+numb.blanks_WD <- length(control_samples_WD)
+numb.ind_WD <- seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>%
+  filter(Control. == "N", Month.Collected == "April") %>%
+  distinct(sample_id, SubLocation) %>%
+  count(SubLocation) %>%
+  pull(n)
 
-header.true <- function(seqtab_12SV5_tax_wide_filtered) {
-  names(seqtab_12SV5_tax_wide_filtered) <- as.character(unlist(seqtab_12SV5_tax_wide_filtered[1,]))
-  seqtab_12SV5_tax_wide_filtered[-1,]
+decontaminated_WD <- decon(
+  data        = seqtab_Wowetta_12SV5_tax_wide_filtered_DECON_WD,
+  numb.blanks = numb.blanks_WD,
+  numb.ind    = numb.ind_WD,
+  taxa        = FALSE
+)
+reads_removed_WD <- decontaminated_WD$reads.removed
+
+# Decontam rainy season
+numb.blanks_WR <- length(control_samples_WR)
+numb.ind_WR <- seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>%
+  filter(Control. == "N", Month.Collected == "July") %>%
+  distinct(sample_id, SubLocation) %>%
+  count(SubLocation) %>%
+  pull(n)
+
+decontaminated_WR <- decon(
+  data        = seqtab_Wowetta_12SV5_tax_wide_filtered_DECON_WR,
+  numb.blanks = numb.blanks_WR,
+  numb.ind    = numb.ind_WR,
+  taxa        = FALSE
+)
+reads_removed_WR <- decontaminated_WR$reads.removed
+
+seqtab_Wowetta_12SV5_tax_wide_filtered<-decontaminated$decon.table
+seqtab_Wowetta_12SV5_tax_wide_filtered$Mean.blank<-NULL
+seqtab_Wowetta_12SV5_tax_wide_filtered<-t(seqtab_Wowetta_12SV5_tax_wide_filtered)
+seqtab_Wowetta_12SV5_tax_wide_filtered<-data.frame(seqtab_Wowetta_12SV5_tax_wide_filtered)
+
+header.true <- function(seqtab_Wowetta_12SV5_tax_wide_filtered) {
+  names(seqtab_Wowetta_12SV5_tax_wide_filtered) <- as.character(unlist(seqtab_Wowetta_12SV5_tax_wide_filtered[1,]))
+  seqtab_Wowetta_12SV5_tax_wide_filtered[-1,]
 }
-seqtab_12SV5_tax_wide_filtered<-header.true(seqtab_12SV5_tax_wide_filtered)
+seqtab_Wowetta_12SV5_tax_wide_filtered<-header.true(seqtab_12SV5_tax_wide_filtered)
 
 i <- c(1:2484) 
 seqtab_12SV5_tax_wide_filtered[ , i] <- apply(seqtab_12SV5_tax_wide_filtered[ , i], 2,  
-                                           function(x) as.numeric(as.character(x)))
+                                              function(x) as.numeric(as.character(x)))
 
 #REMOVE SAMPLES THAT NOW HAVE NO READS IN THEM
-seqtab_12SV5_tax_wide_filtered<-seqtab_12SV5_tax_wide_filtered[rowSums(seqtab_12SV5_tax_wide_filtered[])>0,]
+seqtab_Wowetta_12SV5_tax_wide_filtered<-seqtab_12SV5_tax_wide_filtered[rowSums(seqtab_Wowetta_12SV5_tax_wide_filtered[])>0,]
 
 #CONVERTING INTO LONG FORMAT
-seqtab_12SV5_tax_long_meta_clean_filtered<-seqtab_12SV5_tax_wide_filtered
-seqtab_12SV5_tax_long_meta_clean_filtered <- tibble::rownames_to_column(seqtab_12SV5_tax_long_meta_clean_filtered, "rn")
-seqtab_12SV5_tax_long_meta_clean_filtered <- gather(seqtab_12SV5_tax_long_meta_clean_filtered, species, reads, 2:2485, factor_key=TRUE)
-seqtab_12SV5_tax_long_meta_clean_filtered$reads<-   as.numeric(seqtab_12SV5_tax_long_meta_clean_filtered$reads)
-seqtab_12SV5_tax_long_meta_clean_filtered<-seqtab_12SV5_tax_long_meta_clean_filtered %>% rename(SampleSite_time = rn)
+seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered<-seqtab_Wowetta_12SV5_tax_wide_filtered
+seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered <- tibble::rownames_to_column(seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered, "rn")
+seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered <- gather(seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered, species, reads, 2:2485, factor_key=TRUE)
+seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered$reads<-   as.numeric(seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered$reads)
+seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered<-seqtab_Wowetta_12SV5_tax_long_meta_clean_filtered %>% rename(SampleSite_time = rn)
 
-write.csv(seqtab_12SV5_tax_wide_filtered,"WP2A_ASV_table_wide_filtered.csv")
+write.csv(seqtab_Wowetta_12SV5_tax_wide_filtered,"Wowetta_ASV_table_wide_filtered.csv")
 
 #ABSOLUTE AMPLICON ABUNDANCE
 #ggplot(seqtab_12SV5_tax_long_meta_clean , aes(x = SampleSite_time, fill = species, y = reads)) + 
@@ -159,7 +196,6 @@ write.csv(seqtab_12SV5_tax_wide_filtered,"WP2A_ASV_table_wide_filtered.csv")
 ##scale_fill_brewer(palette="Paired")
 
 #DENSITY PLOT FOR ALL DATA AREA
-
 #seqtab_12SV5_tax_long_meta_clean_sum_reads<-seqtab_12SV5_tax_long_meta_clean_filtered %>% 
 # group_by(species,SampleSite_time, Days,SampleSite_code) %>% 
 # summarize(reads=sum(reads)) %>%
@@ -211,7 +247,7 @@ Arthropoda_count<-sum(Arthropoda_count$reads)
 #library(limma)
 
 #VennDiag <- euler(c("lower" = 653, "middle" = 622, "upper" = 331, "lower&middle" = 307, "lower&upper" = 55, 
- #                   "middle&upper" = 155, "lower&middle&upper" = 236))
+#                   "middle&upper" = 155, "lower&middle&upper" = 236))
 #plot(VennDiag, counts = TRUE, font=1, cex=1, alpha=0.5,
 #     fill=c("darkblue", "deepskyblue2", "cornflowerblue"))
 
@@ -233,7 +269,7 @@ Arthropoda_count<-sum(Arthropoda_count$reads)
 
 #library(VennDiagram)
 #venn.diagram(
- # x = list(Autumn_Venn, Winter_Venn,Spring_Venn,Summer_Venn),
+# x = list(Autumn_Venn, Winter_Venn,Spring_Venn,Summer_Venn),
 #  category.names = c("Autumn" , "Winter","Spring","Summer"),
 #  filename = 'WP2A_venn_diagramm.png',
 #  output=TRUE)
@@ -243,9 +279,9 @@ Arthropoda_count<-sum(Arthropoda_count$reads)
 #library(limma)
 
 #VennDiag <- euler(c("lower" = 653, "middle" = 622, "upper" = 331, "lower&middle" = 307, "lower&upper" = 55, 
- #                   "middle&upper" = 155, "lower&middle&upper" = 236))
+#                   "middle&upper" = 155, "lower&middle&upper" = 236))
 #plot(VennDiag, counts = TRUE, font=1, cex=1, alpha=0.5,
- #    fill=c("darkblue", "deepskyblue2", "cornflowerblue"))
+#    fill=c("darkblue", "deepskyblue2", "cornflowerblue"))
 
 #VennDiag <- euler(c("Autumn"=335, "Winter"=552,"Spring"=301,"Summer"=328,
 #                    "Autumn&Summer"=91,"Autumn&Winter"=93,
@@ -292,15 +328,15 @@ seqtab_12SV5_tax_normalised <- merge(lofresh_metadata_WP2_3_summary[, c("SampleS
 #Salmo_salar_norm<-seqtab_12SV5_tax_normalised %>% filter(species == "Salmo_salar")
 
 #Salmo_salar_norm_sum_reads<-Salmo_salar_norm %>% 
- # group_by(SampleSite_time, Days,SampleSite_code) %>% 
-  #summarize(normalised_reads=sum(normalised_reads)) %>%
-  #rename(SampleSite_time_sum =SampleSite_time,Days_sum=Days,SampleSite_code_sum=SampleSite_code,normalised_reads_sum= normalised_reads)
+# group_by(SampleSite_time, Days,SampleSite_code) %>% 
+#summarize(normalised_reads=sum(normalised_reads)) %>%
+#rename(SampleSite_time_sum =SampleSite_time,Days_sum=Days,SampleSite_code_sum=SampleSite_code,normalised_reads_sum= normalised_reads)
 
 #Salmo_salar_norm_sum_reads$Days_sum<-as.numeric(Salmo_salar_norm_sum_reads$Days_sum)
 
 #ggplot(data=Salmo_salar_norm_sum_reads, aes(x=Days_sum, y=normalised_reads_sum))+
- # facet_grid(~ SampleSite_code_sum)+theme_bw()+geom_bar(stat='identity')+ 
-  #theme(axis.text.x = element_text(angle = 90))
+# facet_grid(~ SampleSite_code_sum)+theme_bw()+geom_bar(stat='identity')+ 
+#theme(axis.text.x = element_text(angle = 90))
 
 #PLOTTING TOP Taxon
 #seqtab_12SV5_tax_top %>%
@@ -323,31 +359,31 @@ seqtab_12SV5_tax_phyla<-seqtab_12SV5_tax_phyla %>%
 seqtab_12SV5_tax_phyla <- merge(lofresh_metadata_WP2_3_summary[, c("SampleSite_time", "SampleSite_code")],seqtab_12SV5_tax_phyla, by="SampleSite_time")
 unique(seqtab_12SV5_tax_phyla[c("X2")])
 seqtab_12SV5_tax_phyla$X2<-factor(seqtab_12SV5_tax_phyla$X2,levels= c('Arthropoda','Rotifera','Mollusca','Chordata',
-                                                                                  'Annelida','Nematoda','Gastrotricha', 'Tardigrada','Cnidaria','Porifera','Echinodermata','Nemertea',
-                                                                                  'Xenacoelomorpha',
-                                                                                  'Nematomorpha', 'Acanthocephala <thorny-headed worm>','Chaetognatha','Hemichordata',
-                                                                                  'Ctenophora <comb jellyfish phylum>','Bryozoa','Platyhelminthes', 'Micrognathozoa'),ordered=TRUE)                                                                                         
+                                                                      'Annelida','Nematoda','Gastrotricha', 'Tardigrada','Cnidaria','Porifera','Echinodermata','Nemertea',
+                                                                      'Xenacoelomorpha',
+                                                                      'Nematomorpha', 'Acanthocephala <thorny-headed worm>','Chaetognatha','Hemichordata',
+                                                                      'Ctenophora <comb jellyfish phylum>','Bryozoa','Platyhelminthes', 'Micrognathozoa'),ordered=TRUE)                                                                                         
 
-                                                                                                        
+
 ggplot(data=seqtab_12SV5_tax_phyla,aes(x = SampleSite_time, fill = X2, y = reads)) + 
   geom_bar(position="fill",stat = "identity", colour = "black")+
   theme(axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank())+
   theme(axis.text.x = element_text(angle = 90))+facet_wrap(~ SampleSite_code,scales="free",ncol = 15)+scale_fill_manual(values = c("#A6CEE3",#Arthropods
-                                                                             "#1F78B4", #Rotifera
-                                                                             "#B2DF8A",#Molluscs
-                                                                             "#33A02C",#Chordates
-                                                                             "#FB9A99",#annelids
-                                                                             "#E31A1C",#nematodes
-                                                                             "#FDBF6F",#gastrotricha
-                                                                             "#FF7F00",#tardigrada
-                                                                             "#CAB2D6",#Cnideria
-                                                                             "#6A3D9A",#porifera
-                                                                             "#FFFF99",#echinodermata
-                                                                             "#B15928",#nemertea,
-                                                                             "white",
-                                                                             "white","white","white","white","white","white","white","white"))
+                                                                                                                                   "#1F78B4", #Rotifera
+                                                                                                                                   "#B2DF8A",#Molluscs
+                                                                                                                                   "#33A02C",#Chordates
+                                                                                                                                   "#FB9A99",#annelids
+                                                                                                                                   "#E31A1C",#nematodes
+                                                                                                                                   "#FDBF6F",#gastrotricha
+                                                                                                                                   "#FF7F00",#tardigrada
+                                                                                                                                   "#CAB2D6",#Cnideria
+                                                                                                                                   "#6A3D9A",#porifera
+                                                                                                                                   "#FFFF99",#echinodermata
+                                                                                                                                   "#B15928",#nemertea,
+                                                                                                                                   "white",
+                                                                                                                                   "white","white","white","white","white","white","white","white"))
 #PLOTTING TOP PHYLA
 seqtab_12SV5_tax_top_phyla <- data.frame(do.call('rbind', strsplit(as.character(seqtab_12SV5_tax_top$species),';',fixed=TRUE)))
 seqtab_12SV5_tax_top_phyla<-cbind(seqtab_12SV5_tax_top,seqtab_12SV5_tax_top_phyla)
@@ -360,13 +396,13 @@ seqtab_12SV5_tax_top_phyla<-seqtab_12SV5_tax_top_phyla %>%
 seqtab_12SV5_tax_top_phyla <- merge(lofresh_metadata_WP2_3_summary[, c("SampleSite_time", "SampleSite_code")],seqtab_12SV5_tax_top_phyla, by="SampleSite_time")
 
 #seqtab_12SV5_tax_top_phyla %>%
-  #mutate(X2 = fct_reorder(X2, desc(seqtab_12SV5_tax_col_sum3))) %>%
+#mutate(X2 = fct_reorder(X2, desc(seqtab_12SV5_tax_col_sum3))) %>%
 #  ggplot(aes(x = SampleSite_time, fill = X2, y = reads)) + 
 #  geom_bar(position="fill",stat = "identity", colour = "black")+
 #  theme(axis.title.y=element_blank(),
 #        axis.text.y=element_blank(),
 #        axis.ticks.y=element_blank())+
- # theme(axis.text.x = element_text(angle = 90))+scale_fill_brewer(palette="Paired")+facet_wrap(~ SampleSite_code,scales="free",ncol = 15)
+# theme(axis.text.x = element_text(angle = 90))+scale_fill_brewer(palette="Paired")+facet_wrap(~ SampleSite_code,scales="free",ncol = 15)
 
 seqtab_12SV5_tax_top_phyla<-seqtab_12SV5_tax_top_phyla %>% 
   group_by(X2) %>% 
@@ -443,12 +479,12 @@ lofresh_metadata_WP2_3 <- read_csv("metadata/lofresh_metadata_WP2&3.csv")
 lofresh_metadata_WP2_3 = lofresh_metadata_WP2_3[!duplicated(lofresh_metadata_WP2_3$SampleSite_time),]
 
 adonis_data<- merge(lofresh_metadata_WP2_3[, c("SampleSite_time","river_section","season","Days","Dist_from_lake","pH",
-  "conductivity_uS_cm","gran_alk_ueq_L","daily_flow_by_catchment","monthly_flow_by_catchment","seasonal_flow_by_catchment",
-  "week_before_flow_by_catchment","river_width_m","river_gradient_percent","rainfall_monthly_average",
-  "temp_monthly_average"
-  #"Arable_and_horticulture_ha","Broadleaf_woodland_ha",	"Coniferous_woodland_ha",
-  #"Acid_grassland_ha",	"Neutral_grassland_ha",	"Improved_grassland_ha",	"Heather_grassland_ha",	"Heather_ha",
-  #"Bog_ha",	"Freshwater_ha",	"Inland_rock_ha",	"Supralittoral_sediment_ha",	"Suburban_ha",	"Urban_ha"
+                                               "conductivity_uS_cm","gran_alk_ueq_L","daily_flow_by_catchment","monthly_flow_by_catchment","seasonal_flow_by_catchment",
+                                               "week_before_flow_by_catchment","river_width_m","river_gradient_percent","rainfall_monthly_average",
+                                               "temp_monthly_average"
+                                               #"Arable_and_horticulture_ha","Broadleaf_woodland_ha",	"Coniferous_woodland_ha",
+                                               #"Acid_grassland_ha",	"Neutral_grassland_ha",	"Improved_grassland_ha",	"Heather_grassland_ha",	"Heather_ha",
+                                               #"Bog_ha",	"Freshwater_ha",	"Inland_rock_ha",	"Supralittoral_sediment_ha",	"Suburban_ha",	"Urban_ha"
 )],adonis_data, by="SampleSite_time")
 
 adonis_data<-na.omit(adonis_data)
@@ -471,7 +507,7 @@ adon.results_WP2<-adonis2(adonis_data ~ adonis_data_meta$Dist_from_lake+
                             adonis_data_meta$gran_alk_ueq_L+
                             adonis_data_meta$conductivity_uS_cm+
                             adonis_data_meta$pH,
-                         method="bray",perm=999,by="margin")
+                          method="bray",perm=999,by="margin")
 print(adon.results_WP2)
 
 #PLOTTING BETA DIVERSITY NMDS
@@ -555,9 +591,9 @@ lofresh_metadata_WP2_3 <- read_csv("metadata/lofresh_metadata_WP2&3.csv")
 lofresh_metadata_WP2_3 = lofresh_metadata_WP2_3[!duplicated(lofresh_metadata_WP2_3$SampleSite_time),]
 
 adonis_data_Arthropoda<- merge(lofresh_metadata_WP2_3[, c("SampleSite_time","river_section","season","Days","Dist_from_lake","pH",
-                                               "conductivity_uS_cm","gran_alk_ueq_L","daily_flow_by_catchment","monthly_flow_by_catchment","seasonal_flow_by_catchment",
-                                               "week_before_flow_by_catchment","river_width_m","river_gradient_percent","rainfall_monthly_average",
-                                               "temp_monthly_average")],adonis_data_Arthropoda, by="SampleSite_time")
+                                                          "conductivity_uS_cm","gran_alk_ueq_L","daily_flow_by_catchment","monthly_flow_by_catchment","seasonal_flow_by_catchment",
+                                                          "week_before_flow_by_catchment","river_width_m","river_gradient_percent","rainfall_monthly_average",
+                                                          "temp_monthly_average")],adonis_data_Arthropoda, by="SampleSite_time")
 adonis_data_Arthropoda<-na.omit(adonis_data_Arthropoda)
 
 adonis_data_Arthropoda_meta<- adonis_data_Arthropoda[c(1:16)]
@@ -566,18 +602,18 @@ adonis_data_Arthropoda<-adonis_data_Arthropoda[,-c(1:16)]
 adonis_data_Arthropoda_meta$Days<-as.numeric(adonis_data_Arthropoda_meta$Days)
 
 adon.results_WP2_Arthropoda<-adonis2(adonis_data_Arthropoda ~ 
-                            adonis_data_Arthropoda_meta$season+
-                              adonis_data_Arthropoda_meta$Days+
-                            adonis_data_Arthropoda_meta$Dist_from_lake+
-                            adonis_data_Arthropoda_meta$daily_flow_by_catchment+
-                            adonis_data_Arthropoda_meta$monthly_flow_by_catchment+
-                            adonis_data_Arthropoda_meta$week_before_flow_by_catchment+
-                            adonis_data_Arthropoda_meta$river_gradient_percent+
-                            adonis_data_Arthropoda_meta$rainfall_monthly_average+
-                            adonis_data_Arthropoda_meta$temp_monthly_average+
-                            adonis_data_Arthropoda_meta$conductivity_uS_cm+
-                            adonis_data_Arthropoda_meta$pH,
-                          method="bray",perm=999,by="margin")
+                                       adonis_data_Arthropoda_meta$season+
+                                       adonis_data_Arthropoda_meta$Days+
+                                       adonis_data_Arthropoda_meta$Dist_from_lake+
+                                       adonis_data_Arthropoda_meta$daily_flow_by_catchment+
+                                       adonis_data_Arthropoda_meta$monthly_flow_by_catchment+
+                                       adonis_data_Arthropoda_meta$week_before_flow_by_catchment+
+                                       adonis_data_Arthropoda_meta$river_gradient_percent+
+                                       adonis_data_Arthropoda_meta$rainfall_monthly_average+
+                                       adonis_data_Arthropoda_meta$temp_monthly_average+
+                                       adonis_data_Arthropoda_meta$conductivity_uS_cm+
+                                       adonis_data_Arthropoda_meta$pH,
+                                     method="bray",perm=999,by="margin")
 print(adon.results_WP2_Arthropoda)
 
 #PLOTTING BETA DIVERSITY NMDS
@@ -667,7 +703,7 @@ with(ccamodel_adonis_data_Arthropoda_meta, legend("bottomleft", levels(river_sec
 # and temporal smooth interactions.
 # =============================================================================
 ##########   ALPHA DIVERSITY METRICS ################
-                                                 
+
 shannon_index<-diversity(seqtab_12SV5_tax_normalised_wide, index = "shannon")
 shannon_index<-data.frame(shannon_index)
 ID <- rownames(shannon_index)
@@ -693,10 +729,10 @@ lofresh_metadata_WP2_3 = lofresh_metadata_WP2_3[!duplicated(lofresh_metadata_WP2
 alpha_12SV5_WP2A_meta_data <- alpha_12SV5_WP2A %>% rename(SampleSite_time= ID)
 alpha_12SV5_WP2A_meta_data <- merge(lofresh_metadata_WP2_3[, c("SampleSite_time","SampleSite_code","Date_sampled","Dist_from_lake","Days","season")],alpha_12SV5_WP2A_meta_data, by="SampleSite_time")
 
-  ggplot(alpha_12SV5_WP2A_meta_data, aes(x=Dist_from_lake, y=shannon_index, color=season)) +
+ggplot(alpha_12SV5_WP2A_meta_data, aes(x=Dist_from_lake, y=shannon_index, color=season)) +
   geom_point() + 
-    geom_smooth(method = "gam", formula = y ~ s(x))+
-    theme_bw()
+  geom_smooth(method = "gam", formula = y ~ s(x))+
+  theme_bw()
 
 
 #ALPHA DIVERSITY Arthropoda
@@ -720,17 +756,17 @@ p_Arthropoda<-ggplot(shannon_index_Arthropoda_meta_data, aes(x=SampleSite_code, 
   theme_bw()
 
 shannon_index_Arthropoda_meta_data<- merge(lofresh_metadata_WP2_3[, c("SampleSite_time",
-                                                                  "season",
-                                                                  "temp_monthly_average",
-                                                                  "conductivity_uS_cm",
-                                                                  "gran_alk_ueq_L","daily_flow_by_catchment",
-                                                                  "monthly_flow_by_catchment",
-                                                                  "seasonal_flow_by_catchment",
-                                                                  "week_before_flow_by_catchment",
-                                                                  "river_width_m",
-                                                                  "river_gradient_percent",
-                                                                  "rainfall_monthly_average",
-                                                                  "pH")],shannon_index_Arthropoda_meta_data, by="SampleSite_time")
+                                                                      "season",
+                                                                      "temp_monthly_average",
+                                                                      "conductivity_uS_cm",
+                                                                      "gran_alk_ueq_L","daily_flow_by_catchment",
+                                                                      "monthly_flow_by_catchment",
+                                                                      "seasonal_flow_by_catchment",
+                                                                      "week_before_flow_by_catchment",
+                                                                      "river_width_m",
+                                                                      "river_gradient_percent",
+                                                                      "rainfall_monthly_average",
+                                                                      "pH")],shannon_index_Arthropoda_meta_data, by="SampleSite_time")
 
 shannon_index_Arthropoda_meta_data$Days<-as.numeric(shannon_index_Arthropoda_meta_data$Days)
 
@@ -763,19 +799,19 @@ ggplot(shannon_index_Arthropoda_meta_data, aes(pH, shannon_index)) +
   theme(legend.position="none")
 
 mod_gam_Arthropoda <- mgcv::gam(shannon_index ~ 
-                 season+
-                 s(Dist_from_lake)+
-                 s(Days)+
-                 s(Dist_from_lake, by=season)+
-                 s(pH)+
-                 s(daily_flow_by_catchment)+
-                 s(monthly_flow_by_catchment)+
-                 s(week_before_flow_by_catchment)+
-                 s(river_gradient_percent)+
-                 s(rainfall_monthly_average)+
-                 s(temp_monthly_average)+
-                 s(conductivity_uS_cm), 
-               data=shannon_index_Arthropoda_meta_data)
+                                  season+
+                                  s(Dist_from_lake)+
+                                  s(Days)+
+                                  s(Dist_from_lake, by=season)+
+                                  s(pH)+
+                                  s(daily_flow_by_catchment)+
+                                  s(monthly_flow_by_catchment)+
+                                  s(week_before_flow_by_catchment)+
+                                  s(river_gradient_percent)+
+                                  s(rainfall_monthly_average)+
+                                  s(temp_monthly_average)+
+                                  s(conductivity_uS_cm), 
+                                data=shannon_index_Arthropoda_meta_data)
 summary(mod_gam_Arthropoda)
 anova(mod_gam_Arthropoda)
 
@@ -791,7 +827,7 @@ mod_gam_Arthropoda_summary$p.value<-paste("p = ",mod_gam_Arthropoda_summary$p.va
 mod_gam_Arthropoda_summary$p.value<-sub('^p = 0$', 'p < 0.01', mod_gam_Arthropoda_summary$p.value)
 
 mod_gam_Arthropoda_summary$Arthropoda<-paste(mod_gam_Arthropoda_summary$F,mod_gam_Arthropoda_summary$p.value,
-                                        sep = ", ")
+                                             sep = ", ")
 mod_gam_Arthropoda_summary$F<-NULL
 mod_gam_Arthropoda_summary$p.value<-NULL
 
@@ -827,9 +863,9 @@ mod_gam_Mollusca_summary <- tibble::rownames_to_column(mod_gam_Mollusca_summary,
 mod_gam_combined_summary<-list(mod_gam_Arthropoda_summary ,
                                mod_gam_Rotifera_summary ,
                                mod_gam_Nematoda_summary,
-                                mod_gam_Mollusca_summary, 
+                               mod_gam_Mollusca_summary, 
                                mod_gam_Annelida_summary)%>% reduce(left_join, by = "Factor")
-                               
+
 mod_gam_combined_summary[is.na(mod_gam_combined_summary)] <- "-"
 
 
@@ -854,17 +890,17 @@ shannon_index_phlya_split_data<-rbind(shannon_index_Nematoda_meta_data,
 #library(mgcv)
 
 shannon_index_phlya_split_data<- merge(lofresh_metadata_WP2_3[, c("SampleSite_time",
-                                                         "season",
-                                                         "temp_monthly_average",
-                                                         "conductivity_uS_cm",
-                                                         "gran_alk_ueq_L","daily_flow_by_catchment",
-                                                         "monthly_flow_by_catchment",
-                                                         "seasonal_flow_by_catchment",
-                                                         "week_before_flow_by_catchment",
-                                                         "river_width_m",
-                                                         "river_gradient_percent",
-                                                         "rainfall_monthly_average",
-                                                         "pH")],shannon_index_phlya_split_data, by="SampleSite_time")
+                                                                  "season",
+                                                                  "temp_monthly_average",
+                                                                  "conductivity_uS_cm",
+                                                                  "gran_alk_ueq_L","daily_flow_by_catchment",
+                                                                  "monthly_flow_by_catchment",
+                                                                  "seasonal_flow_by_catchment",
+                                                                  "week_before_flow_by_catchment",
+                                                                  "river_width_m",
+                                                                  "river_gradient_percent",
+                                                                  "rainfall_monthly_average",
+                                                                  "pH")],shannon_index_phlya_split_data, by="SampleSite_time")
 
 shannon_index_phlya_split_data$Days<-as.numeric(shannon_index_phlya_split_data$Days)
 shannon_index_phlya_split_data<-shannon_index_phlya_split_data[shannon_index_phlya_split_data$shannon_index != 0, ] 
@@ -955,7 +991,7 @@ mod_gam <- gam(shannon_index ~ phyla+
                  temp_monthly_average+
                  s(gran_alk_ueq_L)+
                  s(conductivity_uS_cm), 
-  data=shannon_index_phlya_split_data)
+               data=shannon_index_phlya_split_data)
 summary(mod_gam)
 
 plot(mod_gam, shade = TRUE, pages = 1, scale = 0)
@@ -1159,7 +1195,7 @@ design <- data.frame(samp = adonis_data_meta$sample)
 
 cim_plot<-cim(result.spls,
               comp = 1:1,
-             margins = c(15, 5))
+              margins = c(15, 5))
 
 cl<-colnames(adonis_data)
 cl<-data.frame(cl)
@@ -1175,7 +1211,7 @@ stim.col <- stim.col[as.numeric(cl$X2)]
 
 cim_plot<-cim(result.spls,row.sideColors = stim.col,
               comp = 1:1,
-    margins = c(15, 5))
+              margins = c(15, 5))
 
 spls_correlation<-cim_plot[["mat"]]
 spls_correlation<-data.frame(spls_correlation)
