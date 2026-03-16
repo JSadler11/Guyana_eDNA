@@ -96,8 +96,17 @@ repseqs_12SV5_length_min$fasta_id<-NULL
 repseqs_12SV5_length_min$seq_length<-NULL
 
 # Export the length-filtered sequences as a FASTA-formatted CSV: this is the BLAST input file
-write.csv(repseqs_12SV5_length_min,"R_outputs/full_12SV5_length_filtered_repseqs_12SV5_BLAST_INPUT.fasta", row.names=FALSE,quote = FALSE)
+# Use below if fasta ids are bare hash lines
+writeLines(
+  paste0(">", repseqs_12SV5_length$fasta_id, "\n", repseqs_12SV5_length$sequence),
+  con = "R_outputs/full_12SV5_length_filtered_repseqs_12SV5_BLAST_INPUT.fasta"
+)
 
+# If you have > before each entry, then use this
+writeLines(
+  repseqs_12SV5_length_min$fasta_entry,
+  con = "R_outputs/full_12SV5_length_filtered_repseqs_12SV5_BLAST_INPUT.fasta"
+)
 # --> Now BLAST this on the cluster using the "12SV5 gene" database:
 
 # INSERT HERE Sophie's Classifier. May need to install on cluster in new conda
